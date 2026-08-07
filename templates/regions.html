@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Regio's Beheer - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<h2>Regio's Beheren</h2>
+
+<div style="display: flex; gap: 30px; margin-top: 20px;">
+    <!-- Formulier om Regio toe te voegen of te bewerken -->
+    <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 6px; border: 1px solid #ddd;">
+        <h3>{{ 'Regio Bewerken: ' + edit_region.name if edit_region else 'Regio Toevoegen' }}</h3>
+        <form action="/regions/save" method="POST">
+            {% if edit_region %}
+            <input type="hidden" name="region_id" value="{{ edit_region.id }}">
+            {% endif %}
+
+            <div class="form-group">
+                <label for="name">Naam Regio:</label>
+                <input type="text" id="name" name="name" value="{{ edit_region.name if edit_region else '' }}" required placeholder="Bijv. Noord">
+            </div>
+            
+            <div class="form-group">
+                <label for="province">Provincie:</label>
+                <select id="province_select" name="province" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" required onchange="filterForm()">
+                    {% for prov in ['Antwerpen', 'Brussel', 'Limburg', 'Oost-Vlaanderen', 'Vlaams-Brabant', 'West-Vlaanderen'] %}
+                    <option value="{{ prov }}" {% if (edit_region and edit_region.province == prov) or (not edit_region and prov == 'Vlaams-Brabant') %}selected{% endif %}>{{ prov }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Koppel Afdelingen:</label>
+                <div style="max-height: 250px; overflow-y: auto; background: white; border: 1px solid #ccc; padding: 10px; border-radius: 4px;">
+                    {% for dept in departments %}
+                        {% if dept.type != 'provinciale_zetel' and (not dept.region_id or (edit_region and dept.region_id == edit_region.id)) %}
+                        <div class="dept-checkbox-item" data-province="{{ dept.province }}" style="margin-bottom: 5px;">
+                            <input type="checkbox" id="reg_dept_{{ dept.id }}" name="departments[]" value="{{ dept.id }}" {% if edit_region and dept in edit_region.departments %}checked{% endif %}>
+                            <label for="reg_dept_{{ dept.id }}" style="display:inline; font-weight:normal;">{{ dept.name }} ({{ dept.province }})</label>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="actions" style="text-align: left; border: none; padding: 0; display: flex; gap: 10px;">
+                <button type="submit" class="btn-submit">Regio Opslaan</button>
+                {% if edit_region %}
+                <a href="/regions" style="background: #6c757d; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">Annuleren</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Overzicht van bestaande Regio's -->
+    <div style="flex: 2;">
+        <h3>Bestaande Regio's</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Naam</th>
+                    <th>Provincie</th>
+                    <th>Afdelingen</th>
+                    <th>Acties</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reg in regions %}
+                <tr>
+                    <td><strong>{{ reg.name }}</strong></td>
+                    <td>{{ reg.province }}</td>
+                    <td>
+                        {% for d in reg.departments %}
+                            <span style="background:#eee; padding:2px 5px; border-radius:3px; display:inline-block; margin:2px; font-size:11px;">{{ d.name }}</span>
+                        {% else %}
+                            <span style="color: #888; font-style: italic;">Geen</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="/regions/edit/{{ reg.id }}" class="btn-edit">Bewerk</a>
+                        <form action="/regions/delete/{{ reg.id }}" method="POST" onsubmit="return confirm('Weet je zeker dat je deze regio wilt verwijderen?');" style="display:inline;">
+                            <button type="submit" style="background: #d32f2f; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verwijder</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #888;">Geen regio's gevonden.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterForm() {
+    let selectedProv = document.getElementById("province_select").value;
+    let deptItems = document.querySelectorAll(".dept-checkbox-item");
+
+    deptItems.forEach(item => {
+        let itemProv = item.getAttribute("data-province");
+        if (itemProv === selectedProv) {
+            item.style.display = "block";
+        } else {
+            item.style.display = "none";
+        }
+    });
+}
+window.onload = function() {
+    filterForm();
+};
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Bewerk SIT - Rode Kruis Map Generator{% endblock %}
+{% block content_style %}style="max-width: 800px; margin: 0 auto;"{% endblock %}
+
+{% block content %}
+    <h2>Bewerk SIT-Locatie: {{ sit.name }}</h2>
+    <form action="/sit-locations/edit/{{ sit.id }}" method="POST">
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 2;">
+                <label for="name">Naam:</label>
+                <input type="text" id="name" name="name" value="{{ sit.name }}" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="province">Provincie:</label>
+                <select id="province" name="province" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" required>
+                    <option value="" {% if not sit.province %}selected{% endif %} disabled>Selecteer een provincie...</option>
+                    <option value="Antwerpen" {% if sit.province == 'Antwerpen' %}selected{% endif %}>Antwerpen</option>
+                    <option value="Brussel" {% if sit.province == 'Brussel' %}selected{% endif %}>Brussel</option>
+                    <option value="Limburg" {% if sit.province == 'Limburg' %}selected{% endif %}>Limburg</option>
+                    <option value="Oost-Vlaanderen" {% if sit.province == 'Oost-Vlaanderen' %}selected{% endif %}>Oost-Vlaanderen</option>
+                    <option value="Vlaams-Brabant" {% if sit.province == 'Vlaams-Brabant' %}selected{% endif %}>Vlaams-Brabant</option>
+                    <option value="West-Vlaanderen" {% if sit.province == 'West-Vlaanderen' %}selected{% endif %}>West-Vlaanderen</option>
+                </select>
+
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="type">Type (bijv. Sit-Med, Sit-Log):</label>
+            <input type="text" id="type" name="type" value="{{ sit.type or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="address">Adres:</label>
+            <input type="text" id="address" name="address" value="{{ sit.address or '' }}">
+        </div>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="lat">Latitude (Optioneel):</label>
+                <input type="number" step="any" id="lat" name="lat" value="{{ sit.lat or '' }}">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="lon">Longitude (Optioneel):</label>
+                <input type="number" step="any" id="lon" name="lon" value="{{ sit.lon or '' }}">
+            </div>
+        </div>
+
+        <h3 style="color:#d32f2f; margin-top: 20px; border-bottom: 2px solid #eee;">SIT Voertuigen</h3>
+        <div id="sit_vehicles_container">
+            {% for vehicle in sit.sit_vehicles %}
+            <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative;">
+                <button type="button" style="position: absolute; top: 15px; right: 15px; background: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="this.parentElement.remove()">Verwijderen</button>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Voertuig Naam:</label>
+                        <input type="text" name="vehicle_name[]" value="{{ vehicle.name }}" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Vlootnummer:</label>
+                        <input type="text" name="vehicle_fleet[]" value="{{ vehicle.fleet_nr or '' }}">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <button type="button" onclick="addSitVehicleRow()" style="background-color: #1976d2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;">+ Voertuig Toevoegen</button>
+
+        <div class="actions">
+            <a href="/sit-locations" class="btn-cancel">Annuleren</a>
+            <button type="submit" class="btn-submit">Opslaan</button>
+
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function addSitVehicleRow() {
+        const container = document.getElementById('sit_vehicles_container');
+        const card = document.createElement('div');
+        card.style.cssText = "background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative;";
+        card.innerHTML = `
+            <button type="button" style="position: absolute; top: 15px; right: 15px; background: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="this.parentElement.remove()">Verwijderen</button>
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 2;">
+                    <label>Voertuig Naam:</label>
+                    <input type="text" name="vehicle_name[]" value="" placeholder="Bijv. SIT-Log" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Vlootnummer:</label>
+                    <input type="text" name="vehicle_fleet[]" value="" placeholder="Bijv. V001">
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    }
+</script>
+{% endblock %}

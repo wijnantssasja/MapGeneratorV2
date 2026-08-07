@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Rode Kruis Map Generator{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { color: #d32f2f; margin: 0; font-size: 22px; }
+        .nav-links a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; padding-bottom: 3px; }
+        .nav-links a:hover { color: #d32f2f; }
+        .nav-links a.active { color: #d32f2f; border-bottom: 2px solid #d32f2f; }
+        .user-info { display: flex; align-items: center; gap: 15px; font-size: 14px; }
+        .btn-logout { background-color: #d32f2f; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        .btn-logout:hover { background-color: #b71c1c; }
+        .content { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow-x: auto; }
+        
+        /* Gedeelde Tabel Styling */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; color: #333; }
+        tr:hover { background-color: #f1f1f1; }
+        .btn-edit { background-color: #1976d2; color: white; padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 12px; }
+        
+        /* Gedeelde Formulier Styling */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; font-size: 14px;}
+        input[type="text"], input[type="email"], input[type="number"], input[type="color"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn-submit { background-color: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-cancel { background-color: #999; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-block; margin-right: 10px;}
+        .actions { margin-top: 30px; text-align: right; border-top: 1px solid #ddd; padding-top: 20px;}
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if user %}
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Rode Kruis Kaart</h1>
+            <div class="nav-links">
+                <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
+                <a href="/departments" class="{% if '/departments' in request.url.path %}active{% endif %}">Afdelingen</a>
+                <a href="/provinciale-zetels" class="{% if '/provinciale-zetels' in request.url.path %}active{% endif %}">Prov. Zetels</a>
+                <a href="/sit-locations" class="{% if '/sit-locations' in request.url.path %}active{% endif %}">SIT Locaties</a>
+            <a href="/regions" class="{% if '/regions' in request.url.path %}active{% endif %}">Regio's</a>
+                <a href="/clusters" class="{% if '/clusters' in request.url.path %}active{% endif %}">Clusters</a>
+	    </div>
+        </div>
+        <div class="user-info">
+            <span>Ingelogd als: <strong>{{ user.username }}</strong> ({{ user.role }})</span>
+            <a href="/logout" class="btn-logout">Uitloggen</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="content" {% block content_style %}{% endblock %}>
+        {% block content %}{% endblock %}
+    </div>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

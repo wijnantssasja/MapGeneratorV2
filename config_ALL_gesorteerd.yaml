@@ -1,0 +1,3520 @@
+paths:
+  input_shapefile: opgeschoonde_data/cleaned_shapes.shp
+  output_folder: output
+  base_filename: Vlaanderen
+settings:
+  exclude_ids: []
+  base_url: https://www.rodekruis.be/afdeling/
+  enable_html_export: false
+  debug_id_print: false
+  debug_show_all_shapes: false
+  province_filter: All
+
+manual_region_assignments:
+  # Formaat: "Gemeente of Deelgemeente": "Naam van de Regio"
+  "Klemskerke": "Noord"
+  "Vlissegem": "Noord"
+  "Kraainem": "Oost"
+
+clusters:
+  Zuid-Oost:
+  - Tienen
+  - Landen
+  - Zoutleeuw-Linter-Geetbets
+  Noord-Oost:
+  - Aarschot
+  - Diest
+  Centrum-Oost:
+  - Kampenhout-Herent
+  - Leuven
+  - Haacht
+  - Kortenberg
+  Noord:
+  - Kapelle-op-den-Bos-Londerzeel
+  - Meise-Wemmel
+  - Grimbergen
+  - Opwijk-Merchtem
+  Zuid:
+  - Druivenstreek
+  - Tervuren
+  - Bertem-Huldenberg
+  Centrum:
+  - Vilvoorde-Zemst
+  - Machelen-Diegem
+  - Zaventem-Steenokkerzeel
+  Noord-West:
+  - Dilbeek
+  - ATLAS
+  - Roosdaal
+  - Lennik-Gooik
+  Zuid-West:
+  - Sint-Pieters-Leeuw
+  - Beersel-Rode
+  - Halle
+
+sit_locations:
+- name: SIT-Herent
+  address: Spoorwegstraat 8, 3020 Herent
+  type: Sit-Med, Sit-Log
+  vehicles:
+  - name: SIT-Log Herent
+    fleet_nr: V001
+  - name: SIT-Med Herent
+    fleet_nr: V002
+- name: SIT-Peutie
+  address: Martelarenstraat 181, 1800 Vilvoorde
+  type: Sit-Med
+  vehicles:
+  - name: SIT-Log Peutie
+    fleet_nr: V003
+- name: SIT-Sint-Pieters-Leeuw
+  address: Pepingensesteenweg 250, 1600 Sint-Pieters-Leeuw
+  type: Sit-Med
+  vehicles:
+  - name: SIT-Log Sint-Pieters-Leeuw
+    fleet_nr: V004
+
+vrijwilligerskorpsen:
+- Tienen
+- Roosdaal
+- Pajottegem
+- Pepingen
+- Lennik
+- Liedekerke
+- Sint-Pieters-Leeuw
+- Drogenbos
+- Beersel
+- Asse
+- Londerzeel
+- Wemmel
+- Merchtem
+- Kapelle-op-den-bos
+- Zemst
+- Boortmeerbeek
+- Vilvoorde
+- Steenokkerzeel
+- Kampenhout
+- Machelen
+- Zaventem
+- Kortenberg
+- Herent
+- Bertem
+- Huldenberg
+- Oud-Heverlee
+- Begijnendijk
+- Aarschot
+- Scherpenheuvel-Zichem
+- Tielt-Winge
+- Lubbeek
+- Hoegaarden
+- Linter
+- Landen
+- Geetbets
+- Halen
+- Merchtem
+- Meise
+- Bever
+manual_shape_assignments:
+  7793397: Ruisbroek
+  119031: Berchem
+  6959139: Machelen-Diegem
+  7787539: Hamme
+  6776849: Aalst
+manual_parents:
+  106275: Baarle-Hertog
+departments:
+  Aartselaar:
+    group: ''
+    province: Antwerpen
+    members:
+    - Aartselaar
+    email: voorzitter@aartselaar.rodekruis.be
+    telephone: ''
+    address: Wolffaertshoflaan  26, 2630 Aartselaar
+    services: []
+    color: '#9bc9cd'
+  Antwerpen-Stad:
+    group: ''
+    province: Antwerpen
+    members:
+    - Antwerpen
+    - Berendrecht
+    - Lillo
+    - Zandvliet
+    - Berendrecht-Zandvliet-Lillo
+    email: ''
+    telephone: ''
+    address: Belgielei 34, 2018 Antwerpen
+    services: []
+    color: '#cc81b6'
+  Arendonk:
+    group: ''
+    province: Antwerpen
+    members:
+    - Arendonk
+    email: info@arendonk.rodekruis.be
+    telephone: ''
+    address: Hovestraat 44, 2370 Arendonk
+    services: []
+    color: '#d8a5c8'
+  Balen-Olmen:
+    group: ''
+    province: Antwerpen
+    members:
+    - Balen
+    - Olmen
+    email: voorzitter@balen-olmen.rodekruis.be
+    telephone: ''
+    address: Schoolstraat 13/3, 2491 Olmen
+    services: []
+    color: '#67d482'
+  Beerse-Merksplas:
+    group: ''
+    province: Antwerpen
+    members:
+    - Beerse
+    - Merksplas
+    - Vlimmeren
+    email: voorzitter@beerse-merksplas.rodekruis.be
+    telephone: ''
+    address: Boudewijnstraat  18, 2340 Beerse
+    services: []
+    color: '#cad8b0'
+  Berchem:
+    group: ''
+    province: Antwerpen
+    members:
+    - Berchem
+    email: ''
+    telephone: ''
+    address: Jan De Graefstraat 21, 2600 Berchem
+    services: []
+    color: '#d1c4e4'
+  Berlaar:
+    group: ''
+    province: Antwerpen
+    members:
+    - Berlaar
+    - Gestel
+    email: info@berlaar.rodekruis.be
+    telephone: ''
+    address: Zomerstraat 26, 2590 Berlaar
+    services: []
+    color: '#e9c5cc'
+  Boechout-Vremde:
+    group: ''
+    province: Antwerpen
+    members:
+    - Boechout
+    - Vremde
+    email: info@boechout-vremde.rodekruis.be
+    telephone: ''
+    address: Elfbunderweg 12, 2530 Boechout
+    services: []
+    color: '#90cace'
+  Boom-Rumst:
+    group: ''
+    province: Antwerpen
+    members:
+    - Boom
+    - Reet
+    - Rumst
+    - Terhagen
+    email: info@rodekruisboomrumst.be
+    telephone: ''
+    address: Hospitaalstraat 7, 2850 Boom
+    services: []
+    color: '#a8c97b'
+  Borgerhout:
+    group: ''
+    province: Antwerpen
+    members:
+    - Borgerhout
+    email: info@borgerhout.rodekruis.be
+    telephone: ''
+    address: Dokter Van de Perrelei 111, 2140 Borgerhout
+    services: []
+    color: '#ebd8c5'
+  Bornem:
+    group: ''
+    province: Antwerpen
+    members:
+    - Bornem
+    - Hingene
+    - Mariekerke (Bornem)
+    - Weert
+    email: ''
+    telephone: ''
+    address: Puursesteenweg 353, 2880 Bornem
+    services: []
+    color: '#b1c4dc'
+  Borsbeek-Wommelgem:
+    group: ''
+    province: Antwerpen
+    members:
+    - Borsbeek
+    - Wommelgem
+    email: info@borsbeek-wommelgem.rodekruis.be
+    telephone: ''
+    address: Fort II straat, 2160 Wommelgem
+    services: []
+    color: '#bedeb6'
+  Brasschaat:
+    group: ''
+    province: Antwerpen
+    members:
+    - Brasschaat
+    email: ''
+    telephone: ''
+    address: De Mortel 16, 2930 Brasschaat
+    services: []
+    color: '#95da76'
+  Brecht:
+    group: ''
+    province: Antwerpen
+    members:
+    - Brecht
+    email: ''
+    telephone: ''
+    address: Gasthuisstraat 42, 2960 Brecht
+    services: []
+    color: '#ade6c3'
+  Duffel-Putte-Sint-Katelijne-Waver:
+    group: ''
+    province: Antwerpen
+    members:
+    - Beerzel
+    - Duffel
+    - Onze-Lieve-Vrouw-Waver
+    - Putte
+    - Sint-Katelijne-Waver
+    - Peulis
+    email: voorzitter@duffel-putte-skw.rodekruis.be
+    telephone: ''
+    address: Spoorweglaan 2/1, 2570 Duffel
+    services: []
+    color: '#c9c394'
+  Essen:
+    group: ''
+    province: Antwerpen
+    members:
+    - Essen
+    email: voorzitter@essen.rodekruis.be
+    telephone: ''
+    address: Spoorwegstraat 2, 2910 Essen
+    services: []
+    color: '#afabdc'
+  Geel-Meerhout:
+    group: ''
+    province: Antwerpen
+    members:
+    - Geel
+    - Meerhout
+    - Zammel
+    email: info@geel-meerhout.rodekruis.be
+    telephone: ''
+    address: Stelenseweg 92, 2440 Geel
+    services: []
+    color: '#c0e3c2'
+  Grobbendonk-Vorselaar:
+    group: ''
+    province: Antwerpen
+    members:
+    - Bouwel
+    - Grobbendonk
+    - Vorselaar
+    email: info@grobbendonk-vorselaar.rodekruis.be
+    telephone: ''
+    address: Grensstraat 41, 2243 Pulle
+    services: []
+    color: '#7791c1'
+  Heist-Op-Den-Berg:
+    group: ''
+    province: Antwerpen
+    members:
+    - Booischot
+    - Hallaar
+    - Heist-op-den-Berg
+    - Itegem
+    - Schriek
+    - Wiekevorst
+    email: voorzitter@heist-op-den-berg.rodekruis.be
+    telephone: ''
+    address: Broekstraat 46 B, 2220 Hallaar
+    services: []
+    color: '#e8ecc5'
+  Hemiksem:
+    group: ''
+    province: Antwerpen
+    members:
+    - Hemiksem
+    email: ''
+    telephone: ''
+    address: Nijverheidsstraat 23, 2620 Hemiksem
+    services: []
+    color: '#d895b4'
+  Herentals:
+    group: ''
+    province: Antwerpen
+    members:
+    - Herentals
+    email: info@herentals.rodekruis.be
+    telephone: ''
+    address: Schoolstraat 46, 2200 Herentals
+    services: []
+    color: '#cce9ae'
+  Herenthout:
+    group: ''
+    province: Antwerpen
+    members:
+    - Herenthout
+    email: ''
+    telephone: ''
+    address: Itegemsesteenweg 128, 2270 Herenthout
+    services: []
+    color: '#dbb17a'
+  Herselt:
+    group: ''
+    province: Antwerpen
+    members:
+    - Blauberg
+    - Herselt
+    - Ramsel
+    email: ''
+    telephone: ''
+    address: Blauberg 25, 2230 Herselt
+    services: []
+    color: '#ba8579'
+  Heultje:
+    group: ''
+    province: Antwerpen
+    members:
+    - Heultje
+    email: ''
+    telephone: ''
+    address: Pastorijstraat 1, 2260 Westerlo
+    services: []
+    color: '#c0e6b2'
+  Hoogstraten:
+    group: ''
+    province: Antwerpen
+    members:
+    - Hoogstraten
+    - Meer
+    - Meerle
+    - Minderhout
+    - Wortel
+    email: ''
+    telephone: ''
+    address: Slommerhof 18, 2320 Hoogstraten
+    services: []
+    color: '#c7c2ed'
+  Hove-Lint:
+    group: ''
+    province: Antwerpen
+    members:
+    - Hove
+    - Lint
+    email: ''
+    telephone: ''
+    address: Duffelsesteenweg 65, 2547 Lint
+    services: []
+    color: '#b4deb5'
+  Hulshout:
+    group: ''
+    province: Antwerpen
+    members:
+    - Houtvenne
+    - Hulshout
+    - Westmeerbeek
+    email: ''
+    telephone: ''
+    address: Industriepark 3, 2235 Hulshout
+    services: []
+    color: '#d2bd89'
+  Kapellen-Stabroek:
+    group: ''
+    province: Antwerpen
+    members:
+    - Hoevenen
+    - Kapellen
+    - Stabroek
+    email: pr@kapellen-stabroek.rodekruis.be
+    telephone: ''
+    address: Antwerpsesteenweg 146, 2950 Kapellen
+    services: []
+    color: '#e6dfb0'
+  Kasterlee:
+    group: ''
+    province: Antwerpen
+    members:
+    - Kasterlee
+    - Lichtaart
+    - Tielen
+    email: voorzitter@kasterlee.rodekruis.be
+    telephone: ''
+    address: Lichtaartsebaan 4/3, 2460 Kasterlee
+    services: []
+    color: '#a9cb93'
+  Laakdal:
+    group: ''
+    province: Antwerpen
+    members:
+    - Eindhout
+    - Laakdal
+    - Varendonk
+    - Veerle
+    - Vorst
+    email: ''
+    telephone: ''
+    address: Varendonksebaan  4, 2431 Veerle
+    services: []
+    color: '#c57dc0'
+  Lier:
+    group: ''
+    province: Antwerpen
+    members:
+    - Broechem
+    - Emblem
+    - Koningshooikt
+    - Lier
+    - Massenhoven
+    - Oelegem
+    - Pulderbos
+    - Pulle
+    - Ranst
+    - Viersel
+    - Zandhoven
+    email: info@lier.rodekruis.be
+    telephone: ''
+    address: Hoogveldweg 99, 2500 Lier
+    services: []
+    color: '#e0e2c6'
+  Lille:
+    group: ''
+    province: Antwerpen
+    members:
+    - Gierle
+    - Lille
+    - Poederlee
+    - Wechelderzande
+    email: voorzitter@lille.rodekruis.be
+    telephone: ''
+    address: Gierlebaan 26/A, 2275 Lille
+    services: []
+    color: '#88d19c'
+  Malle:
+    group: ''
+    province: Antwerpen
+    members:
+    - Malle
+    - Oostmalle
+    - Westmalle
+    email: info@malle.rodekruis.be
+    telephone: ''
+    address: Turnhoutsebaan 8, 2390 Malle
+    services: []
+    color: '#769abe'
+  Mechelen-Bonheiden:
+    group: ''
+    province: Antwerpen
+    members:
+    - Bonheiden
+    - Heffen
+    - Hombeek
+    - Leest
+    - Mechelen
+    - Rijmenam
+    - Walem
+    email: info@mechelen-bonheiden.rodekruis.be
+    telephone: ''
+    address: Winketkaai 23, 2800 Mechelen
+    services: []
+    color: '#edd8bb'
+  Merode:
+    group: ''
+    province: Antwerpen
+    members:
+    - Oevel
+    - Oosterwijk
+    - Tongerlo
+    - Voortkapel
+    - Westerlo
+    - Zoerle-Parwijs
+    email: info@merode.rodekruis.be
+    telephone: ''
+    address: Meulemanslaan 16, 2260 Westerlo
+    services: []
+    color: '#74d6da'
+  Mol:
+    group: ''
+    province: Antwerpen
+    members:
+    - Mol
+    email: voorzitter@mol.rodekruis.be
+    telephone: ''
+    address: Markt 62, 2400 Mol
+    services: []
+    color: '#ccebbf'
+  Muizen:
+    group: ''
+    province: Antwerpen
+    members:
+    - Muizen
+    email: info@muizen.rodekruis.be
+    telephone: ''
+    address: Sint Lambertuslaan 49/A, 2812 Muizen
+    services: []
+    color: '#c1e2b0'
+  Niel-Schelle:
+    group: ''
+    province: Antwerpen
+    members:
+    - Niel
+    - Schelle
+    email: hulpdienst@niel-schelle.rodekruis.be
+    telephone: ''
+    address: Antwerpsestraat 24, 2845 Niel
+    services: []
+    color: '#baa4d7'
+  Nijlen:
+    group: ''
+    province: Antwerpen
+    members:
+    - Bevel
+    - Kessel
+    - Nijlen
+    email: info@nijlen.rodekruis.be
+    telephone: ''
+    address: Statiestraat 13, 2560 Nijlen
+    services: []
+    color: '#d5bf61'
+  Noord-Antwerpen:
+    group: ''
+    province: Antwerpen
+    members:
+    - Ekeren
+    - Merksem
+    - Schoten
+    email: info@noord-antwerpen.rodekruis.be
+    telephone: ''
+    address: Gasketelplein 12, 2900 Schoten
+    services: []
+    color: '#8cd36f'
+  Noorderwijk-Morkhoven:
+    group: ''
+    province: Antwerpen
+    members:
+    - Morkhoven
+    - Noorderwijk
+    email: info@noorderwijk.rodekruis.be
+    telephone: ''
+    address: Ring 26, 2200 Herentals
+    services: []
+    color: '#97cfab'
+  Olen:
+    group: ''
+    province: Antwerpen
+    members:
+    - Olen
+    email: ''
+    telephone: ''
+    address: Watertorenstraat 16, 2250 Olen
+    services: []
+    color: '#6483ce'
+  Oud-Turnhout:
+    group: ''
+    province: Antwerpen
+    members:
+    - Oud-Turnhout
+    email: info@oud-turnhout.rodekruis.be
+    telephone: ''
+    address: Neerstraat 1, 2360 Oud-Turnhout
+    services: []
+    color: '#d7ba89'
+  Puurs-Sint-Amands:
+    group: ''
+    province: Antwerpen
+    members:
+    - Breendonk
+    - Liezele
+    - Lippelo
+    - Oppuurs
+    - Puurs
+    - Puurs-Sint-Amands
+    - Sint-Amands
+    email: voorzitter@puurs-sint-amands.rodekruis.be
+    telephone: ''
+    address: Kleine Amer 24A, 2870 Puurs-Sint-Amands
+    services: []
+    color: '#e1b3ae'
+  Rand:
+    group: ''
+    province: Antwerpen
+    members:
+    - Edegem
+    - Kontich
+    - Mortsel
+    - Waarloos
+    email: info@rand.rodekruis.be
+    telephone: ''
+    address: Heirbaan 51, 2640 Mortsel
+    services: []
+    color: '#8978bb'
+  Ravels:
+    group: ''
+    province: Antwerpen
+    members:
+    - Poppel
+    - Ravels
+    - Weelde
+    email: voorzitter@ravels.rodekruis.be
+    telephone: ''
+    address: Geeneinde 54/01-0, 2381 Weelde
+    lat: 51.401984021607824
+    lon: 4.973433319146902
+    services: []
+    color: '#d6cfa1'
+  Retie-Dessel:
+    group: ''
+    province: Antwerpen
+    members:
+    - Dessel
+    - Retie
+    email: ''
+    telephone: ''
+    address: Boesdijkhofstraat 24, 2470 Retie
+    services: []
+    color: '#c6cfe1'
+  Rijkevorsel:
+    group: ''
+    province: Antwerpen
+    members:
+    - Rijkevorsel
+    email: voorzitter@rijkevorsel.rodekruis.be
+    telephone: ''
+    address: Prinsenpad 7/2, 2310 Rijkevorsel
+    services: []
+    color: '#b77ad2'
+  Ruisbroek:
+    group: ''
+    province: Antwerpen
+    members:
+    - Ruisbroek
+    email: ''
+    telephone: ''
+    address: Kerkstraat 34, 2870 Ruisbroek
+    services: []
+    color: '#bee0e4'
+  Schilde:
+    group: ''
+    province: Antwerpen
+    members:
+    - '''s-Gravenwezel'
+    - Schilde
+    email: webmaster@schilde.rodekruis.be
+    telephone: ''
+    address: Eugeen Dierckxlaan 23, 2970 Schilde
+    services: []
+    color: '#8fc089'
+  Sint-Job-In-T-Goor:
+    group: ''
+    province: Antwerpen
+    members:
+    - Sint-Job-in-'t-Goor
+    email: voorzitter@sint-job-in-t-goor.rodekruis.be
+    telephone: ''
+    address: Kerklei 2, 2960 Sint-Job-in-'t-Goor
+    services: []
+    color: '#dda3ab'
+  Sint-Lenaarts:
+    group: ''
+    province: Antwerpen
+    members:
+    - Sint-Lenaarts
+    email: ''
+    telephone: ''
+    address: Kerkstraat, 2960 Sint-Lenaarts
+    services: []
+    color: '#badfd8'
+  Turnhout:
+    group: ''
+    province: Antwerpen
+    members:
+    - Baarle-Hertog
+    - Turnhout
+    email: pr@turnhout.rodekruis.be
+    telephone: ''
+    address: Wouwerstraat 140, 2300 Turnhout
+    services: []
+    color: '#d5b6de'
+  Vosselaar:
+    group: ''
+    province: Antwerpen
+    members:
+    - Vosselaar
+    email: Voorzitter@vosselaar.rodekruis.be
+    telephone: ''
+    address: Konijnenbergpad 5, 2350 Vosselaar
+    services: []
+    color: '#dce1ab'
+  Wijnegem-Deurne:
+    group: ''
+    province: Antwerpen
+    members:
+    - Deurne
+    - Wijnegem
+    email: info@wijnegem-deurne.rodekruis.be
+    telephone: ''
+    address: Veldstraat 80, 2110 Wijnegem
+    services: []
+    color: '#bba7d8'
+  Willebroek:
+    group: ''
+    province: Antwerpen
+    members:
+    - Blaasveld
+    - Heindonk
+    - Tisselt
+    - Willebroek
+    email: pr@willebroek.rodekruis.be
+    telephone: ''
+    address: Emmanuel Rollierstraat 50, 2830 Willebroek
+    services: []
+    color: '#cd65a6'
+  Wuustwezel:
+    group: ''
+    province: Antwerpen
+    members:
+    - Gooreind
+    - Loenhout
+    - Wuustwezel
+    email: info@wuustwezel.rodekruis.be
+    telephone: ''
+    address: Brekelen 4 unit 10, 2990 Wuustwezel
+    lat: 51.3887407771637
+    lon: 4.586932556932731
+    services: []
+    color: '#dedbc1'
+  Zoersel:
+    group: ''
+    province: Antwerpen
+    members:
+    - Halle
+    - Sint-Antonius
+    - Zoersel
+    email: voorzitter@zoersel.rodekruis.be
+    telephone: ''
+    address: Bethaniënlei 108, 2980 Zoersel
+    services: []
+    color: '#b7b3e6'
+  Zuiderdistrict:
+    group: ''
+    province: Antwerpen
+    members:
+    - Hoboken
+    - Wilrijk
+    email: ''
+    telephone: ''
+    address: Broydenborglaan 2, 2660 Hoboken
+    services: []
+    color: '#79d099'
+  Zwartberg:
+    group: ''
+    province: Antwerpen
+    members:
+    - As
+    - Niel-bij-As
+    - Opglabbeek
+    - Zwartberg
+    email: ''
+    telephone: ''
+    address: Industrieweg-Zuid 2043, 3660 Oudsbergen
+    services: []
+    color: '#89c6c5'
+  Brussel-Hoofdstad:
+    group: ''
+    province: Brussel
+    members:
+    - Anderlecht
+    - Bruxelles - Brussel
+    - Ixelles - Elsene
+    - Etterbeek
+    - Evere
+    - Ganshoren
+    - Haren
+    - Jette
+    - Koekelberg
+    - Laeken - Laken
+    - Neder-Over-Heembeek
+    - Auderghem - Oudergem
+    - Schaerbeek - Schaarbeek
+    - Berchem-Sainte-Agathe - Sint-Agatha-Berchem
+    - Saint-Gilles - Sint-Gillis
+    - Molenbeek-Saint-Jean - Sint-Jans-Molenbeek
+    - Saint-Josse-ten-Noode - Sint-Joost-ten-Node
+    - Woluwe-Saint-Lambert - Sint-Lambrechts-Woluwe
+    - Woluwe-Saint-Pierre - Sint-Pieters-Woluwe
+    - Uccle - Ukkel
+    - Forest - Vorst
+    - Watermael-Boitsfort - Watermaal-Bosvoorde
+    email: brusselhoofdstad@rodekruis.be
+    telephone: 02/274.06.40
+    address: Cellebroersstraat 16/B, 1000 Brussel
+    services: []
+    color: '#d0ae9d'
+  Brussel-Stad:
+    group: ''
+    province: Brussel
+    members:
+    - Brussel
+    - Haren
+    - Laken
+    - Neder-Over-Heembeek
+    email: brusselhoofdstad@rodekruis.be
+    telephone: 02/274.06.40
+    address: Cellebroersstraat 16/B, 1000 Brussel
+    services: []
+    color: '#b4df9c'
+  Alken-Wellen:
+    group: ''
+    province: Limburg
+    members:
+    - Alken
+    - Berlingen
+    - Herten
+    - Ulbeek
+    - Wellen
+    email: ''
+    telephone: ''
+    address: Koutermanstraat 2, 3570 Alken
+    services: []
+    color: '#bfc3e8'
+  Bilzen:
+    group: ''
+    province: Limburg
+    members:
+    - Beverst
+    - Bilzen
+    - Eigenbilzen
+    - Grote-Spouwen
+    - Hees
+    - Hoelbeek
+    - Kleine-Spouwen
+    - Martenslinde
+    - Mopertingen
+    - Munsterbilzen
+    - Rijkhoven
+    - Rosmeer
+    - Spouwen
+    - Waltwilder
+    email: voorzitter@bilzen.rodekruis.be
+    telephone: ''
+    address: Nieuwmolenweg 52, 3740 Bilzen-Hoeselt
+    services: []
+    color: '#a576c2'
+  Bocholt-Kaulille:
+    group: ''
+    province: Limburg
+    members:
+    - Bocholt
+    - Reppel
+    - Kaulille
+    email: info@bocholt-kaulille.rodekruis.be
+    telephone: ''
+    address: Eikenlaan 6, 3950 Bocholt
+    services: []
+    color: '#d6cdad'
+  Borgloon:
+    group: ''
+    province: Limburg
+    members:
+    - Bommershoven (Haren)
+    - Borgloon
+    - Broekom
+    - Gors-Opleeuw
+    - Gotem
+    - Groot-Loon
+    - Haren (Borgloon)
+    - Hendrieken
+    - Hoepertingen
+    - Jesseren (Kolmont)
+    - Kerniel
+    - Kolmont (Borgloon)
+    - Kuttekoven
+    - Rijkel
+    - Voort
+    email: ''
+    telephone: ''
+    address: Gotemstraat 22, 3840 Tongeren-Borgloon
+    services: []
+    color: '#cdb7df'
+  Bree:
+    group: ''
+    province: Limburg
+    members:
+    - Beek
+    - Bree
+    - Gerdingen
+    - Opitter
+    - Tongerlo
+    email: info@bree.rodekruis.be
+    telephone: ''
+    address: Riekskensstraat 10, 3960 Bree
+    services: []
+    color: '#b5e5cf'
+  Genk-Zonhoven-Zutendaal:
+    group: ''
+    province: Limburg
+    members:
+    - Genk
+    - Zonhoven
+    - Zutendaal
+    email: voorzitter@zonhoven.rodekruis.be
+    telephone: ''
+    address: Muizenstraat 32, 3520 Zonhoven
+    services: []
+    color: '#c1cbe5'
+  Ham:
+    group: ''
+    province: Limburg
+    members:
+    - Ham
+    - Kwaadmechelen
+    - Oostham
+    email: ''
+    telephone: ''
+    address: Bergstraat 37 F, 3945 Tessenderlo-Ham
+    services: []
+    color: '#d6dcb3'
+  Hamont-Achel:
+    group: ''
+    province: Limburg
+    members:
+    - Achel
+    - Hamont
+    - Hamont-Achel
+    email: ''
+    telephone: ''
+    address: Steenstraat 5, 3930 Hamont-Achel
+    services: []
+    color: '#e3e3c6'
+  Hasselt-Diepenbeek:
+    group: ''
+    province: Limburg
+    members:
+    - Diepenbeek
+    - Hasselt
+    email: info@hasselt-diepenbeek.rodekruis.be
+    telephone: ''
+    address: Boomkensstraat 303, 3500 Hasselt
+    services: []
+    color: '#a8c6e8'
+  Hechtel:
+    group: ''
+    province: Limburg
+    members:
+    - Eksel
+    - Hechtel
+    - Hechtel-Eksel
+    - Wijchmaal
+    email: ''
+    telephone: ''
+    address: Hoefstraat, 3940 Hechtel
+    services: []
+    color: '#d8dfb7'
+  Heers:
+    group: ''
+    province: Limburg
+    members:
+    - Batsheers
+    - Bovelingen
+    - Gutschoven
+    - Heers
+    - Heks
+    - Horpmaal
+    - Klein-Gelmen
+    - Mechelen-Bovelingen
+    - Mettekoven
+    - Opheers
+    - Rukkelingen-Loon
+    - Vechmaal
+    - Veulen
+    email: info@heers.rodekruis.be
+    telephone: ''
+    address: Opheersstraat 87, 3870 Heers
+    services: []
+    color: '#64a1d8'
+  Helzold:
+    group: ''
+    province: Limburg
+    members:
+    - Helchteren
+    - Helzold
+    - Heusden
+    - Houthalen
+    - Zolder
+    email: info@helzold.rodekruis.be
+    telephone: ''
+    address: Rode Kruisstraat 1, 3550 Heusden-Zolder
+    services: []
+    color: '#b5b4eb'
+  Herckenrode:
+    group: ''
+    province: Limburg
+    members:
+    - Kermt
+    - Kermt (Hasselt)
+    - Kuringen
+    - Spalbeek
+    - Stokrooie
+    email: webmaster@herckenrode.rodekruis.be
+    telephone: ''
+    address: Joris van Oostenrijkstraat 36, 3511 Kuringen
+    services: []
+    color: '#e0db98'
+  Hoeselt:
+    group: ''
+    province: Limburg
+    members:
+    - Hoeselt
+    - Romershoven
+    - Schalkhoven
+    - Sint-Huibrechts-Hern
+    - Werm
+    email: info@hoeselt.rodekruis.be
+    telephone: ''
+    address: Boomgaardstraat, 3730 Bilzen-Hoeselt
+    services: []
+    color: '#d682c5'
+  Kinrooi:
+    group: ''
+    province: Limburg
+    members:
+    - Kessenich
+    - Kinrooi
+    - Molenbeersel
+    - Ophoven
+    email: ''
+    telephone: ''
+    address: Hoverstraat, 3640 Kinrooi
+    services: []
+    color: '#7daeda'
+  Kortessem:
+    group: ''
+    province: Limburg
+    members:
+    - Guigoven
+    - Kortessem
+    - Vliermaal
+    - Vliermaalroot
+    - Wintershoven
+    email: ''
+    telephone: ''
+    address: Omstraat 32, 3720 Hasselt
+    services: []
+    color: '#67d86c'
+  Lanaken:
+    group: ''
+    province: Limburg
+    members:
+    - Gellik
+    - Lanaken
+    - Neerharen
+    - Rekem
+    - Veldwezelt
+    email: ''
+    telephone: ''
+    address: Gemeenteplein 8, 3620 Lanaken
+    services: []
+    color: '#b272c1'
+  Lommel:
+    group: ''
+    province: Limburg
+    members:
+    - Lommel
+    email: info@lommel.rodekruis.be
+    telephone: ''
+    address: Norbert Neeckxlaan 50/B, 3920 Lommel
+    services: []
+    color: '#bcd7a1'
+  Maasland:
+    group: ''
+    province: Limburg
+    members:
+    - Dilsen
+    - Dorne
+    - Elen
+    - Lanklaar
+    - Maaseik
+    - Neeroeteren
+    - Opoeteren
+    - Rotem
+    - Stokkem
+    email: info@maasland.rodekruis.be
+    telephone: ''
+    address: Ophovenstraat 69, 3680 Maaseik
+    services: []
+    color: '#bcd289'
+  Maasmechelen:
+    group: ''
+    province: Limburg
+    members:
+    - Boorsem
+    - Eisden
+    - Leut
+    - Maasmechelen
+    - Mechelen-aan-de-Maas
+    - Meeswijk
+    - Opgrimbie
+    - Uikhoven
+    - Vucht
+    email: ''
+    telephone: ''
+    address: Vaartstraat 11, 3630 Maasmechelen
+    services: []
+    color: '#c5a0d3'
+  Meeuwen-Gruitrode:
+    group: ''
+    province: Limburg
+    members:
+    - Ellikom
+    - Gruitrode
+    - Meeuwen
+    - Meeuwen-Gruitrode
+    - Neerglabbeek
+    - Wijshagen
+    email: ''
+    telephone: ''
+    address: Dennenstraat 33, 3670 Oudsbergen
+    services: []
+    color: '#d784b9'
+  Midwestlimburg:
+    group: ''
+    province: Limburg
+    members:
+    - Berbroek
+    - Beringen
+    - Beverlo
+    - Donk
+    - Halen
+    - Heppen
+    - Herk-de-Stad
+    - Koersel
+    - Leopoldsburg
+    - Linkhout
+    - Loksbergen
+    - Lummen
+    - Meldert
+    - Paal
+    - Schulen
+    - Zelem
+    email: info@midwestlimburg.rodekruis.be
+    telephone: ''
+    address: Sint-Petrusstraat 8, 3580 Beringen
+    services: []
+    color: '#a5dfb4'
+  Peer:
+    group: ''
+    province: Limburg
+    members:
+    - Grote-Brogel
+    - Kleine-Brogel
+    - Peer
+    email: ''
+    telephone: ''
+    address: J.H Leynenstraat 16/8, 3990 Peer
+    services: []
+    color: '#e6eec2'
+  Pelt:
+    group: ''
+    province: Limburg
+    members:
+    - Neerpelt
+    - Overpelt
+    - Pelt
+    - Sint-Huibrechts-Lille
+    email: info@pelt.rodekruis.be
+    telephone: ''
+    address: Leopoldlaan 51A, 3900 Pelt
+    services: []
+    color: '#7badc0'
+  Riemst-Voeren:
+    group: ''
+    province: Limburg
+    members:
+    - Genoelselderen
+    - Herderen
+    - Kanne
+    - Membruggen
+    - Millen
+    - Riemst
+    - Val-Meer
+    - Vlijtingen
+    - Vroenhoven
+    - Zichen-Zussen-Bolder
+    - '''s-Gravenvoeren'
+    - Moelingen
+    - Remersdaal
+    - Sint-Martens-Voeren
+    - Sint-Pieters-Voeren
+    - Teuven
+    - Voeren
+    email: voorzitter@riemst-voeren.rodekruis.be
+    telephone: ''
+    address: Maastrichtersteenweg 160, 3770 Riemst
+    services: []
+    color: '#805dd6'
+  Sint-Lambrechts-Herk-Stevoort:
+    group: ''
+    province: Limburg
+    members:
+    - Sint-Lambrechts-Herk
+    - Stevoort
+    - Wimmertingen
+    email: ''
+    telephone: ''
+    address: Broekstraat 1, 3512 Stevoort
+    services: []
+    color: '#e4afca'
+  Sint-Truiden:
+    group: ''
+    province: Limburg
+    members:
+    - Aalst
+    - Binderveld
+    - Boekhout
+    - Brustem
+    - Duras
+    - Engelmanshoven
+    - Gelinden
+    - Gingelom
+    - Gorsem
+    - Groot-Gelmen
+    - Halmaal
+    - Kerkom-bij-Sint-Truiden
+    - Kozen
+    - Mielen-Boven-Aalst
+    - Niel-bij-Sint-Truiden
+    - Nieuwerkerken
+    - Ordingen
+    - Runkelen
+    - Sint-Truiden
+    - Velm
+    - Wijer
+    - Wilderen
+    - Zepperen
+    email: hulpdienst@sint-truiden.rodekruis.be
+    telephone: ''
+    address: Gorsemweg 41/A, 3800 Sint-Truiden
+    services: []
+    color: '#abd1a8'
+  Tessenderlo:
+    group: ''
+    province: Limburg
+    members:
+    - Tessenderlo
+    email: info@tessenderlo.rodekruis.be
+    telephone: ''
+    address: Markt 2, 3980 Tessenderlo-Ham
+    services: []
+    color: '#b5e9d9'
+  Tongeren:
+    group: ''
+    province: Limburg
+    members:
+    - '''s Herenelderen'
+    - Berg
+    - Borlo
+    - Buvingen
+    - Diets-Heur
+    - Haren (Tongeren)
+    - Henis
+    - Herstappe
+    - Jeuk
+    - Kolmont (Tongeren)
+    - Koninksem
+    - Kortijs
+    - Lauw
+    - Mal
+    - Montenaken
+    - Muizen
+    - Neerrepen
+    - Nerem
+    - Overrepen
+    - Piringen
+    - Riksingen
+    - Rutten
+    - Sluizen
+    - Tongeren
+    - Vorsen
+    - Vreren
+    - Widooie
+    - Bommershoven
+    - Jesseren
+    email: info@tongeren.rodekruis.be
+    telephone: ''
+    address: Via Julianus 15, 3700 Tongeren-Borgloon
+    services: []
+    color: '#9dd3d5'
+  Aalst:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Aalst
+    - Baardegem
+    - Erembodegem
+    - Gijzegem
+    - Herdersem
+    - Hofstade
+    - Meldert
+    - Moorsel
+    - Nieuwerkerken
+    email: voorzitter@aalst.rodekruis.be
+    telephone: ''
+    address: Ninovestraat 11, 9320 Erembodegem
+    services: []
+    color: '#87ccad'
+  Aalter:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Aalter
+    - Bellem
+    - Knesselare
+    - Lotenhulle
+    - Poeke
+    - Ursel
+    email: dirk.vermeiren@vrijwilliger.rodekruis.be
+    telephone: ''
+    address: Sint-Gerolflaan 12A, 9880 Aalter
+    services: []
+    color: '#d38278'
+  Assenede-Zelzate:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Assenede
+    - Bassevelde
+    - Boekhoute
+    - Oosteeklo
+    - Zelzate
+    email: voorzitter@assenede-zelzate.rodekruis.be
+    telephone: ''
+    address: Knikkerstraat 16/A, 9960 Assenede
+    services: []
+    color: '#e8dec8'
+  Bazel-Kruibeke-Rupelmonde:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Bazel
+    - Kruibeke
+    - Rupelmonde
+    email: ''
+    telephone: ''
+    address: Nieuwe Baan 8, 9150 Kruibeke
+    services: []
+    color: '#a1d8cf'
+  Berlare:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Berlare
+    - Overmere
+    - Schoonaarde
+    - Uitbergen
+    email: info@berlare.rodekruis.be
+    telephone: ''
+    address: Baron Tibbautstraat 45/A, 9290 Berlare
+    services: []
+    color: '#bce5cf'
+  Beveren-Zwijndrecht:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Beveren-Waas
+    - Beveren
+    - Burcht
+    - Doel
+    - Haasdonk
+    - Kallo (Beveren-Waas)
+    - Kallo
+    - Kieldrecht
+    - Melsele
+    - Verrebroek
+    - Vrasene
+    - Zwijndrecht
+    email: pr@beveren-zwijndrecht.rodekruis.be
+    telephone: ''
+    address: Gravendreef 1, 9120 Beveren-Kruibeke-Zwijndrecht
+    services: []
+    color: '#bbedcf'
+  Brakel:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Brakel
+    - Elst
+    - Everbeek
+    - Michelbeke
+    - Nederbrakel
+    - Opbrakel
+    - Parike
+    - Zegelsem
+    email: ''
+    telephone: ''
+    address: Jagerstraat 64/A, 9660 Brakel
+    services: []
+    color: '#e5b5af'
+  Buggenhout:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Buggenhout
+    - Opdorp
+    email: pr@buggenhout.rodekruis.be
+    telephone: ''
+    address: Bovendonkstraat 23, 9255 Buggenhout
+    services: []
+    color: '#997ebc'
+  Deinze-Zulte:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Astene
+    - Bachte-Maria-Leerne
+    - Deinze
+    - Gottem
+    - Grammene
+    - Machelen
+    - Meigem
+    - Olsene
+    - Petegem-aan-de-Leie
+    - Sint-Martens-Leerne
+    - Vinkt
+    - Wontergem
+    - Zeveren
+    - Zulte
+    email: ''
+    telephone: ''
+    address: Louis Dhontstraat 17, 9800 Deinze
+    services: []
+    color: '#dfcfc2'
+  Denderleeuw-Haaltert:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Denderhoutem
+    - Denderleeuw
+    - Haaltert
+    - Heldergem
+    - Iddergem
+    - Kerksken
+    - Welle
+    email: voorzitter@denderleeuw-haaltert.rodekruis.be
+    telephone: ''
+    address: Thontlaan 48, 9470 Denderleeuw
+    services: []
+    color: '#d98bb5'
+  Dendermonde:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Appels
+    - Baasrode
+    - Dendermonde
+    - Grembergen
+    - Mespelare
+    - Oudegem
+    - Sint-Gillis-bij-Dendermonde
+    email: voorzitter@dendermonde.rodekruis.be
+    telephone: ''
+    address: Serbosstraat 8, 9200 Dendermonde
+    services: []
+    color: '#8ba6c5'
+  Eeklo-Sint-Laureins:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Eeklo
+    - Sint-Jan-in-Eremo
+    - Sint-Laureins
+    - Sint-Margriete
+    - Waterland-Oudeman
+    - Watervliet
+    email: voorzitter@eeklo-sint-laureins.rodekruis.be
+    telephone: ''
+    address: Knikkerstraat 16A, 9960 Assenede
+    services: []
+    color: '#9fcfcb'
+  Erpe-Mere:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Aaigem
+    - Bambrugge
+    - Burst
+    - Erondegem
+    - Erpe
+    - Erpe-Mere
+    - Mere
+    - Ottergem
+    - Vlekkem
+    email: info@erpe-mere.rodekruis.be
+    telephone: ''
+    address: Nieuwstraat, 9420 Erpe-Mere
+    services: []
+    color: '#ca86c9'
+  Gavere-Nazareth:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Asper
+    - Baaigem
+    - Dikkelvenne
+    - Eke
+    - Gavere
+    - Nazareth
+    - Semmerzake
+    - Vurste
+    email: ''
+    telephone: ''
+    address: Dorp 22, 9810 Nazareth-De Pinte
+    services: []
+    color: '#a3d5ce'
+  Gent:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Afsnee
+    - De Pinte
+    - Desteldonk
+    - Deurle
+    - Drongen
+    - Gent
+    - Gentbrugge
+    - Ledeberg
+    - Mariakerke
+    - Mendonk
+    - Oostakker
+    - Sint-Denijs-Westrem
+    - Sint-Kruis-Winkel
+    - Sint-Martens-Latem
+    - Wondelgem
+    - Zevergem
+    - Zwijnaarde
+    email: info@gent.rodekruis.be
+    telephone: ''
+    address: Emile Clauslaan 5, 9000 Gent
+    services: []
+    color: '#93dcce'
+  Geraardsbergen-Lierde:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Deftinge
+    - Geraardsbergen
+    - Goeferdinge
+    - Grimminge
+    - Hemelveerdegem
+    - Idegem
+    - Lierde
+    - Moerbeke
+    - Nederboelare
+    - Nieuwenhove
+    - Onkerzele
+    - Ophasselt
+    - Overboelare
+    - Schendelbeke
+    - Sint-Maria-Lierde
+    - Sint-Martens-Lierde
+    - Smeerebbe - Vloerzegem
+    - Viane
+    - Waarbeke
+    - Zandbergen
+    - Zarlardinge
+    email: voorzitter@geraardsbergen-lierde.rodekruis.be
+    telephone: ''
+    address: Majoor Van Lierdelaan 48, 9500 Geraardsbergen
+    services: []
+    color: '#adb5e3'
+  Groot-Evergem:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Ertvelde
+    - Evergem
+    - Sleidinge
+    - Kluizen
+    email: voorzitter@groot-evergem.rodekruis.be
+    telephone: ''
+    address: Kapellestraat 74, 9940 Evergem
+    services: []
+    color: '#ddc9b0'
+  Hamme:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Elversele
+    - Hamme
+    - Moerzeke
+    email: voorzitter@hamme.rodekruis.be
+    telephone: ''
+    address: Meulenbroekstraat 1/B, 9220 Hamme
+    services: []
+    color: '#9bcd91'
+  Herzele:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Borsbeke
+    - Herzele
+    - Hillegem
+    - Ressegem
+    - Sint-Antelinks
+    - Sint-Lievens-Esse
+    - Steenhuize-Wijnhuize
+    - Woubrechtegem
+    email: ''
+    telephone: ''
+    address: Mergellaan 75/A, 9550 Herzele
+    services: []
+    color: '#bbebce'
+  Heusden-Destelbergen:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Destelbergen
+    - Heusden
+    email: ''
+    telephone: ''
+    address: Kouterstraat 129, 9070 Destelbergen
+    services: []
+    color: '#d5deb3'
+  Kalken:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Kalken
+    email: secretaris@kalken.rodekruis.be
+    telephone: ''
+    address: Colmanstraat 51, 9270 Laarne
+    services: []
+    color: '#d2b369'
+  Kaprijke:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Kaprijke
+    - Lembeke
+    email: ''
+    telephone: ''
+    address: Vaartstraat 8, 9970 Kaprijke
+    services: []
+    color: '#c6a58b'
+  Laarne:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Laarne
+    email: voorzitter@laarne.rodekruis.be
+    telephone: ''
+    address: Zandstraat 1/A, 9270 Laarne
+    services: []
+    color: '#72d88e'
+  Lebbeke:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Denderbelle
+    - Lebbeke
+    - Wieze
+    email: secretaris@lebbeke.rodekruis.be
+    telephone: ''
+    address: D'Helst 16, 9280 Lebbeke
+    services: []
+    color: '#9bc68a'
+  Lede:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Impe
+    - Lede
+    - Oordegem
+    - Smetlede
+    - Wanzele
+    email: ''
+    telephone: ''
+    address: Katstraat 14, 9340 Lede
+    services: []
+    color: '#b7e9b3'
+  Lochristi:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Beervelde
+    - Lochristi
+    - Zaffelare
+    - Zeveneken
+    email: info@lochristi.rodekruis.be
+    telephone: ''
+    address: Kanunnik Petrus Jozef Triestlaan 1, 9080 Lochristi
+    services: []
+    color: '#cd9bbf'
+  Lokeren:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Daknam
+    - Eksaarde
+    - Lokeren
+    email: webmaster@lokeren.rodekruis.be
+    telephone: ''
+    address: Doorslaarstraat 15/A, 9160 Lokeren
+    services: []
+    color: '#c9e4e1'
+  Lovendegem-Zomergem:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Lovendegem
+    - Oostwinkel
+    - Ronsele
+    - Vinderhoute
+    - Zomergem
+    email: secretaris@lovendegem-zomergem.rodekruis.be
+    telephone: ''
+    address: Kruisstraat 30A, 9930 Lievegem
+    services: []
+    color: '#add5c0'
+  Maarkedal:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Etikhove
+    - Maarke-Kerkem
+    - Maarkedal
+    - Nukerke
+    - Schorisse
+    email: voorzitter@maarkedal.rodekruis.be
+    telephone: ''
+    address: Rijststraat 5A, 9688 Schorisse
+    services: []
+    color: '#83d1ab'
+  Maldegem:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Adegem
+    - Maldegem
+    - Middelburg
+    email: pr@maldegem.rodekruis.be
+    telephone: ''
+    address: Bloemestraat 45, 9990 Maldegem
+    services: []
+    color: '#72d5ad'
+  Melle:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Gontrode
+    - Melle
+    email: ''
+    telephone: ''
+    address: Wautersdreef 25, 9090 Merelbeke-Melle
+    services: []
+    color: '#bfd392'
+  Moerbeke-Wachtebeke:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Moerbeke-Waas
+    - Moerbeke
+    - Wachtebeke
+    email: voorzitter@moerbeke-wachtebeke.rodekruis.be
+    telephone: ''
+    address: Moerhofstraat 18/A, 9180 Lokeren
+    services: []
+    color: '#a3de89'
+  Nevele:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Hansbeke
+    - Landegem
+    - Merendree
+    - Nevele
+    - Poesele
+    - Vosselare
+    email: ''
+    telephone: ''
+    address: Brandweerstraat 3, 9850 Deinze
+    services: []
+    color: '#e5d7b8'
+  Ninove:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Appelterre-Eichem
+    - Aspelare
+    - Denderwindeke
+    - Lieferinge
+    - Meerbeke
+    - Nederhasselt
+    - Neigem
+    - Ninove
+    - Okegem
+    - Outer
+    - Pollare
+    - Voorde
+    email: voorzitter@ninove.rodekruis.be
+    telephone: ''
+    address: Paul De Montplein 10, 9400 Ninove
+    services: []
+    color: '#a6da90'
+  Oosterzele:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Balegem
+    - Bottelare
+    - Gijzenzele
+    - Landskouter
+    - Lemberge
+    - Melsen
+    - Merelbeke
+    - Moortsele
+    - Munte
+    - Oosterzele
+    - Schelderode
+    - Scheldewindeke
+    email: voorzitter@oosterzele.rodekruis.be
+    telephone: ''
+    address: Gootje 2, 9860 Oosterzele
+    services: []
+    color: '#d2cba7'
+  Oudenaarde:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Bevere
+    - Edelare
+    - Eine
+    - Elsegem
+    - Ename
+    - Heurne
+    - Horebeke
+    - Huise
+    - Kruisem
+    - Kruishoutem
+    - Lozer
+    - Leupegem
+    - Mater
+    - Melden
+    - Moregem
+    - Mullem
+    - Nederename
+    - Nokere
+    - Ooike
+    - Oudenaarde
+    - Ouwegem
+    - Petegem-aan-de-Schelde
+    - Sint-Kornelis-Horebeke
+    - Sint-Maria-Horebeke
+    - Volkegem
+    - Wannegem-Lede
+    - Welden
+    - Wortegem
+    - Wortegem-Petegem
+    - Zingem
+    email: pr@oudenaarde.rodekruis.be
+    telephone: ''
+    address: Bedrijvenpark Coupure 21, 9700 Oudenaarde
+    services: []
+    color: '#b789c0'
+  Ronse-Kluisbergen:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Berchem
+    - Kluisbergen
+    - Kwaremont
+    - Ronse
+    - Ruien
+    - Zulzeke
+    email: voorzitter@ronse-kluisbergen.rodekruis.be
+    telephone: ''
+    address: Jules Bordetlaan 2B, 9600 Ronse
+    services: []
+    color: '#79c678'
+  Sint-Amandsberg:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Sint-Amandsberg
+    email: info@sint-amandsberg.rodekruis.be
+    telephone: ''
+    address: Motorstraat 109, 9000 Gent
+    services: []
+    color: '#7895d7'
+  Sint-Lievens-Houtem:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Bavegem
+    - Letterhoutem
+    - Sint-Lievens-Houtem
+    - Vlierzele
+    - Zonnegem
+    email: ''
+    telephone: ''
+    address: Kerkkouterstraat 1, 9520 Bavegem
+    services: []
+    color: '#d87478'
+  Sint-Niklaas:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Belsele
+    - De Klinge
+    - Meerdonk
+    - Nieuwkerken-Waas
+    - Sinaai-Waas
+    - Sint-Gillis-Waas
+    - Sint-Niklaas
+    - Sint-Pauwels
+    - Sinaai
+    email: info@sint-niklaas.rodekruis.be
+    telephone: ''
+    address: Parklaan 2, 9100 Sint-Niklaas
+    services: []
+    color: '#dd9a98'
+  Stekene:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Kemzeke
+    - Stekene
+    email: voorzitter@stekene.rodekruis.be
+    telephone: ''
+    address: Zavelstraat 37, 9190 Stekene
+    services: []
+    color: '#cd9f9f'
+  Temse:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Steendorp
+    - Temse
+    - Tielrode
+    email: ''
+    telephone: ''
+    address: Kasteelstraat 72A, 9140 Temse
+    services: []
+    color: '#d7bcdf'
+  Waarschoot:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Waarschoot
+    email: ''
+    telephone: ''
+    address: Kleine Weg 3, 9950 Lievegem
+    services: []
+    color: '#cc94a1'
+  Waasmunster:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Waasmunster
+    email: ''
+    telephone: ''
+    address: Neerstraat 100, 9250 Waasmunster
+    services: []
+    color: '#bd94dd'
+  Wetteren:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Massemen
+    - Westrem
+    - Wetteren
+    email: webmaster@wetteren.rodekruis.be
+    telephone: ''
+    address: Katstraat 14, 9340 Lede
+    services: []
+    color: '#c6e9e2'
+  Wichelen:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Schellebelle
+    - Serskamp
+    - Wichelen
+    email: voorzitter@wichelen.rodekruis.be
+    telephone: ''
+    address: Margote 16, 9260 Wichelen
+    services: []
+    color: '#bf83cc'
+  Zele:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Zele
+    email: info@zele.rodekruis.be
+    telephone: ''
+    address: Lokerenbaan 43/5, 9240 Zele
+    services: []
+    color: '#e29ac0'
+  Zottegem:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Elene
+    - Erwetegem
+    - Godveerdegem
+    - Grotenberge
+    - Leeuwergem
+    - Oombergen
+    - Sint-Goriks-Oudenhove
+    - Sint-Maria-Oudenhove
+    - Strijpen
+    - Velzeke-Ruddershove
+    - Zottegem
+    email: ''
+    telephone: ''
+    address: Meerlaan 48, 9620 Zottegem
+    services: []
+    color: '#6bd78d'
+  Zwalm:
+    group: ''
+    province: Oost-Vlaanderen
+    members:
+    - Beerlegem
+    - Dikkele
+    - Hundelgem
+    - Meilegem
+    - Munkzwalm
+    - Nederzwalm-Hermelgem
+    - Paulatem
+    - Roborst
+    - Rozebeke
+    - Sint-Blasius-Boekel
+    - Sint-Denijs-Boekel
+    - Sint-Maria-Latem
+    - Zwalm
+    email: ''
+    telephone: ''
+    address: Rijststraat 5/A, 9688 Schorisse
+    services: []
+    color: '#77c399'
+  Aarschot:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Aarschot
+    - Begijnendijk
+    - Betekom
+    - Kortrijk-Dutsel
+    - Gelrode
+    - Langdorp
+    - Meensel-Kiezegem
+    - Nieuwrode
+    - Rillaar
+    - Sint-Joris-Winge
+    - Sint-Pieters-Rode
+    - Tielt-Winge
+    - Tielt
+    - Houwaart
+    email: info@aarschot.rodekruis.be
+    telephone: +32 16 123 456
+    address: Boudewijnlaan 2, 3200 Aarschot
+    entiteitnummer: 0B091
+    color: '#BAFFC9'
+    parent_names:
+      '2416899': Tielt-Winge
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - zorgbib
+    - brugfiguren
+    ziekenwagens:
+    - name: ziekenwagen Aarschot
+      fleet_nr: V312
+  Bertem-Huldenberg:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Bertem
+    - Huldenberg
+    - Korbeek-Dijle
+    - Leefdaal
+    - Loonbeek
+    - Neerijse
+    - Ottenburg
+    - Sint-Agatha-Rode
+    email: info@bertem-huldenberg.rodekruis.be
+    telephone: +32 16 987 654
+    address: Tervuursesteenweg 182, 3060 Bertem
+    entiteitnummer: 0B073
+    color: '#BAE1FF'
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - brugfiguren
+  Diest:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Diest
+    - Assent
+    - Averbode
+    - Bekkevoort
+    - Deurne
+    - Kaggevinne
+    - Messelbroek
+    - Molenbeek-Wersbeek
+    - Molenstede
+    - Schaffen
+    - Scherpenheuvel
+    - Testelt
+    - Waanrode
+    - Zichem
+    - Kersbeek-Miskom
+    - Kortenaken
+    - Kersbeek
+    - Hoeleden
+    - Ransberg
+    - Kaggevinne (Scherpenheuvel)
+    - Webbekom
+    email: info@diest.rodekruis.be
+    telephone: +32 13 123 456
+    address: Kolonel blondeellaan, 3290 Diest
+    entiteitnummer: 0B020
+    color: '#E2F0CB'
+    parent_names:
+      '2329743': Bekkevoort
+      '2345267': Diest
+      '1933443': Kortenaken
+      '2323781': Scherpenheuvel-Zichem
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    ziekenwagens:
+    - name: Ziekenwagen Diest
+      fleet_nr: V313
+  Druivenstreek:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Hoeilaart
+    - Overijse
+    email: info@druivenstreek.rodekruis.be
+    telephone: +32 2 123 456
+    address: Watertorenstraat 36, 1560 Hoeilaart
+    entiteitnummer: 0B021
+    color: '#FFB3E6'
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - zorgbib
+    - brugfiguren
+  Haacht:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Haacht
+    - Baal
+    - Boortmeerbeek
+    - Hever
+    - Keerbergen
+    - Schiplaken
+    - Rotselaar
+    - Tildonk
+    - Tremelo
+    - Werchter
+    - Wespelaar
+    - Wezemaal
+    email: info@haacht.rodekruis.be
+    telephone: +32 16 456 789
+    address: Walstraat 56, 3118 Werchter
+    entiteitnummer: 0B094
+    color: '#FFFFB3'
+    parent_names:
+      '816625': Tremelo
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - brugfiguren
+    - uitleendienst
+    ziekenwagens:
+    - name: Ziekenwagen Haacht
+      fleet_nr: V314
+  Kampenhout-Herent:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Kampenhout
+    - Berg
+    - Buken
+    - Herent
+    - Nederokkerzeel
+    - Veltem-Beisem
+    - Wijgmaal
+    - Winksele
+    email: info@kampenhout-herent.rodekruis.be
+    telephone: +32 16 555 444
+    address: Groenstraat 112 A, 3020 Herent
+    entiteitnummer: 0B057
+    color: '#B3FFF0'
+    parent_names:
+      '829231': Kampenhout
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - jeugd
+    ziekenwagens:
+    - name: Ziekenwagen Kampenhout-Herent
+      fleet_nr: V318
+      address: Spoorwegstraat 8, 3020 Herent
+  Kortenberg:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Kortenberg
+    - Erps-Kwerps
+    - Everberg
+    - Meerbeek
+    email: info@kortenberg.rodekruis.be
+    telephone: +32 2 555 123
+    address: Dekenijstraat 9, 3071 Erps-Kwerps
+    entiteitnummer: 0B097
+    color: '#F0E68C'
+    parent_names:
+      '829839': Kortenberg
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - jeugd
+    fleetnumber_zw: V319
+    ziekenwagens:
+    - name: Ziekenwagen Kortenberg
+      fleet_nr: V319
+  Landen:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Landen
+    - Attenhoven
+    - Neerwinden
+    - Walshoutem
+    - Neerlanden
+    - Laar
+    - Ezemaal
+    - Overwinden
+    - Walsbets
+    - Rumsdorp
+    - Wange
+    - Eliksem
+    - Wezeren
+    email: info@landen.rodekruis.be
+    telephone: +32 11 123 456
+    address: Stationsstraat 29a 2, 3400 Landen
+    entiteitnummer: 0B051
+    color: '#FFDAC1'
+    parent_names:
+      '910587': Landen
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - uitleendienst
+    - internationale samenwerking
+  Leuven:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Leuven
+    - Bierbeek
+    - Blanden
+    - Leuvens Haasrode
+    - Heverlee
+    - Leuvens Korbeek-Lo
+    - Korbeek-Lo
+    - Haasrode
+    - Holsbeek
+    - Kessel-Lo
+    - Lovenjoel
+    - Oud-Heverlee
+    - Sint-Joris-Weert
+    - Vaalbeek
+    - Wilsele
+    email: info@leuven.rodekruis.be
+    telephone: +32 16 789 123
+    address: Onze-Lieve-Vrouwstraat 44, 3000 Leuven
+    entiteitnummer: 0B028
+    color: '#B5EAD7'
+    parent_names:
+      '392623': Leuven
+      '392609': Oud-Heverlee
+      '6733357': Leuven
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - jeugd
+    - zorgbib
+    ziekenwagens:
+    - name: Ziekenwagen Leuven 1
+      fleet_nr: V320
+    - name: Ziekenwagen Leuven 2
+      fleet_nr: V321
+  Tervuren:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Tervuren
+    - Wezembeek-Oppem
+    - Duisburg
+    - Vossem
+    email: info@tervuren.rodekruis.be
+    telephone: +32 2 789 456
+    address: Rootstraat 13, 3080 Duisburg
+    entiteitnummer: 0B029
+    color: '#FF9AA2'
+    parent_names:
+      '6959475': Tervuren
+      '414529': Tervuren
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - zorgbib
+    - uitleendienst
+    ziekenwagens:
+    - name: Ziekenwagen Tervuren
+      fleet_nr: V325
+  Tienen:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Tienen
+    - Attenrode
+    - Binkom
+    - Boutersem
+    - Bunsbeek
+    - Glabbeek
+    - Goetsenhoven
+    - Hakendover
+    - Hoegaarden
+    - Kapellen
+    - Kumtich
+    - Neervelp
+    - Oplinter
+    - Opvelp
+    - Outgaarden
+    - Sint-Margriete-Houtem
+    - Vertrijk
+    - Willebringen
+    - Zuurbemde
+    - Bost
+    - Lubbeek
+    - Linden
+    - Pellenberg
+    - Glabbeek-Zuurbemde
+    - Vissenaken
+    - Kerkom
+    - Roosbeek
+    - Oorbeek
+    - Meldert
+    email: info@tienen.rodekruis.be
+    telephone: +32 16 654 321
+    address: Bietenweg 27 H, 3300 Tienen
+    entiteitnummer: 0B039
+    color: '#C7CEEA'
+    parent_names:
+      '1933437': Glabbeek-Zuurbemde
+      '908455': Tienen
+      '831911': Lubbeek
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - zorgbib
+    - jeugd
+    - internationale samenwerking
+    fleetnumber_zw: V328, V327
+    ziekenwagens:
+    - name: Ziekenwagen Tienen 1
+      fleet_nr: V327
+    - name: Ziekenwagen Tienen 2
+      fleet_nr: V328
+  Zoutleeuw-Linter-Geetbets:
+    group: Oost
+    province: Vlaams-Brabant
+    members:
+    - Zoutleeuw
+    - Budingen
+    - Halle-Booienhoven
+    - Linter
+    - Orsmaal-Gussenhoven
+    - Wommersom
+    - Overhespen
+    - Rummen
+    - Geetbets
+    - Dormaal
+    - Neerhespen
+    - Neerlinter
+    - Drieslinter
+    - Melkwezer
+    - Helen-Bos
+    - Grazen
+    email: info@zoutleeuw-rodekruis.be
+    telephone: +32 11 654 987
+    address: Ossenwegstraat 1, 3440 Zoutleeuw
+    entiteitnummer: 0B047
+    color: '#FFB7B2'
+    parent_names:
+      '2362151': Zoutleeuw
+      '1933463': Linter
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    fleetnumber_zw: V329
+    ziekenwagens:
+    - name: Ziekenwagen Zoutleeuw-Linter-Geetbets
+      fleet_nr: V329
+  ATLAS:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Affligem
+    - Essene
+    - Hekelgem
+    - Teralfene
+    - Liedekerke
+    - Asse
+    - Bekkerzeel
+    - Kobbegem
+    - Mollem
+    - Zellik
+    - Ternat
+    - Sint-Katherina-Lombeek
+    - Wambeek
+    - Relegem
+    email: info@atlas.rodekruis.be
+    telephone": +32 15 123 456
+    address: Brusselbaan 117, 1790 Affligem
+    entiteitnummer: 0A026
+    color: '#D4F0F0'
+    parent_names:
+      '2139631': Affligem
+      '2139673': Ternat
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - zorgbib
+    - jeugd
+  Beersel-Rode:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Sint-Genesius-Rode
+    - Alsemberg
+    - Beersel
+    - Drogenbos
+    - Dworp
+    - Linkebeek
+    - Huizingen
+    - Lot
+    email: info@beersel-rode.rodekruis.be
+    telephone: +32 2 654 321
+    address: Brusselsesteenweg 77b, 1652
+    entiteitnummer: 0A080
+    color: '#E0BBE4'
+    parent_names:
+      '223227': Beersel
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+  Dilbeek:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Dilbeek
+    - Groot-Bijgaarden
+    - Itterbeek
+    - Saviowijk
+    - Schepdaal
+    - Sint-Martens-Bodegem
+    - Sint-Ulriks-Kapelle
+    email: info@dilbeek.rodekruis.be
+    telephone: +32 2 123 987
+    address: Geraardsbergsestraat 136, 1703 Schepdaal
+    entiteitnummer: 0A052
+    color: '#957DAD'
+    parent_names:
+      '450091': Dilbeek
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - zorgbib
+    - uitleendienst
+    - internationale samenwerking
+  Grimbergen:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Grimbergen
+    - Beigem
+    - Humbeek
+    - Strombeek-Bever
+    email: info@grimbergen.rodekruis.be
+    telephone: +32 2 321 654
+    address: Ruwaal 14-16, 1850 Grimbergen
+    entiteitnummer: 0A092
+    color: '#FEC8D8'
+    parent_names:
+      '224023': Grimbergen
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - zorgbib
+    - brugfiguren
+    - internationale samenwerking
+  Halle:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Halle
+    - Beert
+    - Bellingen
+    - Bever
+    - Bogaarden
+    - Buizingen
+    - Lembeek
+    - Pepingen
+    - Elingen
+    - Galmaarden
+    - Heikruis
+    - Herfelingen
+    - Herne
+    - Sint-Pieters-Kapelle
+    - Tollembeek
+    - Vollezele
+    email: info@halle.rodekruis.be
+    telephone: +32 2 987 654
+    address: Brusselsesteenweg 183, 1500 Halle
+    entiteitnummer: 0A095
+    color: '#FFDFD3'
+    parent_names:
+      '412961': Halle
+      '2450723': Pepingen
+      Pajottegem: Pajottegem
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - zorgbib
+    - jeugd
+    ziekenwagens:
+    - name: Ziekenwagen Halle 1
+      fleet_nr: V315
+    - name: Ziekenwagen Halle 2
+      fleet_nr: V316
+    - name: Ziekenwagen Halle 3
+      fleet_nr: V317
+  Kapelle-op-den-Bos-Londerzeel:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Kapelle-op-den-Bos
+    - Nieuwenrode
+    - Ramsdonk
+    - Londerzeel
+    - Malderen
+    - Steenhuffel
+    email: info@kapelle-londerzeel.rodekruis.be
+    telephone: +32 52 123 456
+    address: Mechelsestraat 55, 1840 Londerzeel
+    entiteitnummer: 0A087
+    color: '#D291BC'
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - uitleendienst
+  Lennik-Gooik:
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - brugfiguren
+    - uitleendienst
+    - jeugd
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Sint-Kwintens-Lennik
+    - Eizeringen
+    - Sint-Martens-Lennik
+    - Gaasbeek
+    - Gooik
+    - Kester
+    - Oetingen
+    - Leerbeek
+    email: info@lennik-gooik.rodekruis.be
+    telephone: +32 2 555 987
+    address: Karel Keymolenstraat 4, 1750 Lennik
+    entiteitnummer: 0A038
+    color: '#A0E6FF'
+    parent_names:
+      '2291395': Lennik
+  Machelen-Diegem:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Machelen
+    - Diegem
+    email: info@machelen-diegem.rodekruis.be
+    telephone: +32 2 123 456
+    address: Felix Timmermanslaan 63A, 1831 Diegem
+    entiteitnummer: 0A089
+
+    color: '#FFD1DC'
+    parent_names:
+      '392371': Machelen
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    ziekenwagens:
+    - name: Ziekenwagen Machelen-Diegem
+      fleet_nr: V322
+  Meise-Wemmel:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Meise
+    - Oppem
+    - Wolvertem
+    - Westrode
+    - Wemmel
+    email: info@meise-wemmel.rodekruis.be
+    telephone: +32 2 654 987
+    address: Brusselsesteenweg 44, 1860 Meise
+    entiteitnummer: 0A081
+    color: '#D1C4E9'
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - jeugd
+  Opwijk-Merchtem:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Opwijk
+    - Mazenzele
+    - Merchtem
+    - Peizegem
+    - Brussegem
+    - Hamme
+    email: info@opwijk-merchtem.rodekruis.be
+    telephone: +32 2 555 123
+    address: Doortstraat 2, 1745 Opwijk
+    entiteitnummer: 0A075
+    color: '#FFABAB'
+    parent_names:
+      '1827813': Opwijk
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - zorgbib
+    - uitleendienst
+    - internationale samenwerking
+    fleetnumber_zw: V323
+    ziekenwagens:
+    - name: Ziekenwagen Opwijk-Merchtem
+      fleet_nr: V323
+  Roosdaal:
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - ziekenwagen
+    - jeugd
+    - brugfiguren
+    - uitleendienst
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Roosdaal
+    - Borchtlombeek
+    - Onze-Lieve-Vrouw-Lombeek
+    - Pamel
+    - Strijtem
+    email: info@roosdaal.rodekruis.be
+    telephone: +32 54 321 987
+    address: Gustaaf Ponchautstraat 5B, 1760 Roosdaal
+    entiteitnummer: 0A096
+    color: '#85A3FF'
+    parent_names:
+      '2139691': Roosdaal
+    ziekenwagens:
+    - name: Ziekenwagen Roosdaal
+      fleet_nr: V324
+  Sint-Pieters-Leeuw:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Sint-Pieters-Leeuw
+    - Oudenaken
+    - Ruisbroek
+    - Sint-Laureins-Berchem
+    - Vlezenbeek
+    email: info@sint-pieters-leeuw.rodekruis.be
+    telephone: +32 2 123 654
+    address: Pepingensesteenweg 250, 1600 Sint-Pieters-Leeuw
+    entiteitnummer: 0A025
+    color: '#B3B3FF'
+    parent_names:
+      '398271': Sint-Pieters-Leeuw
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+  Vilvoorde-Zemst:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Vilvoorde
+    - Elewijt
+    - Eppegem
+    - Hofstade
+    - Peutie
+    - Weerde
+    - Zemst
+    - Muizen
+    email: info@vilvoorde-zemst.rodekruis.be
+    telephone: +32 2 654 321
+    address: Bolwerkstraat 35, 1800 Vilvoorde
+    entiteitnummer: 0A041
+    color: '#FBE7C6'
+    parent_names:
+      '39251': Zemst
+      '392351': Zemst
+      '391395': Vilvoorde
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - zorgbib
+    - internationale samenwerking
+  Zaventem-Steenokkerzeel:
+    group: West
+    province: Vlaams-Brabant
+    members:
+    - Zaventem
+    - Melsbroek
+    - Nossegem
+    - Steenokkerzeel
+    - Sint-Stevens-Woluwe
+    - Sterrebeek
+    - Perk
+    email: info@zaventem-steenokkerzeel.rodekruis.be
+    telephone: +32 2 555 987
+    address: Leuvensesteenweg 194, 1930 Zaventem
+    entiteitnummer: 0A046
+    color: '#D4A5A5'
+    parent_names:
+      '392369': Zaventem
+      '829837': Steenokkerzeel
+    services:
+    - hulpdienst
+    - bloed
+    - vorming
+    - zorgbib
+  Vlaams-Brabant:
+    type: provinciale_zetel
+    province: Vlaams-Brabant
+    members:
+    - Kraainem
+    transparent: true
+    address: Herestraat 49/BTC, 3000 Leuven
+    lat: 50.8801
+    lon: 4.66996
+    email: vlaamsbrabant@rodekruis.be
+    ziekenwagens:
+    - name: Ziekenwagen Provincie Vlaams-Brabant
+      fleet_nr: V301
+      address: Martelarenstraat 181, 1800 Peutie
+    color: ''
+  Lendelede:
+    group: 'Zuid'
+    province: West-Vlaanderen
+    members:
+    - Lendelede
+    email: ''
+    telephone: ''
+    address: Stationsstraat 5/B, 8860 Lendelede
+    services: []
+    color: '#eacfc3'
+  Meulebeke:
+    group: ''
+    province: West-Vlaanderen
+    members:
+    - Tielt
+    email: webmaster@meulebeke.rodekruis.be
+    telephone: ''
+    address: Dwarsstraat 2, 8760 Tielt
+    services: []
+    color: '#6bca67'
+  Ardooie:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Ardooie
+    - Koolskamp
+    email: ''
+    telephone: ''
+    address: Brugstraat 71/B, 8850 Ardooie
+    services: []
+    color: '#8fd280'
+  Ingelmunster:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Ingelmunster
+    email: ''
+    telephone: ''
+    address: Bruggestraat 280, 8770 Ingelmunster
+    services: []
+    color: '#80aacd'
+  Izegem:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Emelgem
+    - Izegem
+    - Kachtem
+    email: info@izegem.rodekruis.be
+    telephone: ''
+    address: Ommegangstraat 87, 8870 Izegem
+    services: []
+    color: '#a2d360'
+  Moorslede-Staden:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Dadizele
+    - Moorslede
+    - Oostnieuwkerke
+    - Staden
+    - Westrozebeke
+    email: ''
+    telephone: ''
+    address: Iepersestraat 52/F, 8890 Moorslede
+    services: []
+    color: '#7c8dc6'
+  Oostrozebeke:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Oostrozebeke
+    email: ''
+    telephone: ''
+    address: Kalbergstraat 5A, 8780 Oostrozebeke
+    services: []
+    color: '#d9a0a8'
+  Roeselare:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Beveren
+    - Gits
+    - Hooglede
+    - Oekene
+    - Roeselare
+    - Rumbeke
+    email: info@roeselare.rodekruis.be
+    telephone: ''
+    address: Hippoliet Spilleboutdreef 21, 8800 Roeselare
+    services: []
+    color: '#c2d97e'
+  Tielt-Ommeland:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Aarsele
+    - Dentergem
+    - Egem
+    - Kanegem
+    - Markegem
+    - Meulebeke
+    - Oeselgem
+    - Pittem
+    - Schuiferskapelle
+    - Tielt
+    - Wakken
+    email: voorzitter@tielt-ommeland.rodekruis.be
+    telephone: ''
+    address: Deken Darraslaan 31, 8700 Tielt
+    services: []
+    color: '#7294d1'
+  Wielsbeke:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Ooigem
+    - Sint-Baafs-Vijve
+    - Wielsbeke
+    email: ''
+    telephone: ''
+    address: Rijksweg 308, 8710 Wielsbeke
+    services: []
+    color: '#e5c1d3'
+  Zwevezele:
+    group: Midwest
+    province: West-Vlaanderen
+    members:
+    - Lichtervelde
+    - Ruiselede
+    - Wingene
+    - Zwevezele
+    email: hulpdienst@zwevezele.rodekruis.be
+    telephone: ''
+    address: Marktplein 11, 8750 Zwevezele
+    services: []
+    color: '#7ba4c0'
+  Beernem:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Beernem
+    - Oedelem
+    - Sint-Joris
+    email: voorzitter@beernem.rodekruis.be
+    telephone: ''
+    address: Fortstraat 9, 8730 Beernem
+    services: []
+    color: '#cf9369'
+  Blankenberge:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Blankenberge
+    - Houtave
+    - Meetkerke
+    - Nieuwmunster
+    - Uitkerke
+    - Wenduine
+    - Zuienkerke
+    email: ''
+    telephone: ''
+    address: Vredelaan 27, 8370 Blankenberge
+    services: []
+    color: '#ce82c4'
+  Bredene:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Bredene
+    email: info@bredene.rodekruis.be
+    telephone: 0800 777 00
+    address: Prinses Elisabethlaan 47, 8450 Bredene
+    services: []
+    color: '#cda981'
+  Brugge:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Assebroek
+    - Brugge
+    - Damme
+    - Dudzele
+    - Hoeke
+    - Koolkerke
+    - Lapscheure
+    - Lissewege
+    - Moerkerke
+    - Oostkerke
+    - Sijsele
+    - Sint-Andries
+    - Sint-Kruis
+    - Sint-Michiels
+    - Vivenkapelle
+    - Zeebrugge
+    email: voorzitter@brugge.rodekruis.be
+    telephone: ''
+    address: Kleine Monnikenwerve 10, 8000 Brugge
+    services: []
+    color: '#ceb094'
+  Hinterland:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Bekegem
+    - Bovekerke
+    - Eernegem
+    - Gistel
+    - Ichtegem
+    - Koekelare
+    - Moere
+    - Snaaskerke
+    - Zande
+    - Zevekote
+    email: ''
+    telephone: ''
+    address: Bruggestraat 104 A, 8480 Ichtegem
+    services: []
+    color: '#9ca1d6'
+  Knokke-Heist:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Heist-aan-Zee
+    - Knokke
+    - Knokke-Heist
+    - Oostkerke (Damme)
+    - Ramskapelle
+    - Westkapelle
+    - Heist
+    email: pr@knokke-heist.rodekruis.be
+    telephone: ''
+    address: '''t Walletje 50, 8300 Knokke-Heist'
+    color: '#89CFF0'
+    services: []
+  Oostende:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Oostende
+    - Stene
+    - Zandvoorde
+    email: info@oostende.rodekruis.be
+    telephone: ''
+    address: Torhoutsesteenweg 56, 8400 Oostende
+    services: []
+    color: '#d985cf'
+  Oostkamp:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Hertsberge
+    - Oostkamp
+    - Ruddervoorde
+    - Waardamme
+    email: info@oostkamp.rodekruis.be
+    telephone: ''
+    address: Siemenslaan 10, 8020 Oostkamp
+    services: []
+    color: '#8060d1'
+  Oudenburg-Jabbeke:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Ettelgem
+    - Jabbeke
+    - Oudenburg
+    - Roksem
+    - Snellegem
+    - Stalhille
+    - Varsenare
+    - Westkerke
+    - Zerkegem
+    email: ''
+    telephone: ''
+    address: Stedebeekpad 1, 8460 Oudenburg
+    services: []
+    color: '#e2e8b3'
+  Torhout:
+    group: Noord
+    province: West-Vlaanderen
+    members:
+    - Aartrijke
+    - Loppem
+    - Torhout
+    - Veldegem
+    - Wijnendale
+    - Zedelgem
+    email: info@torhout.rodekruis.be
+    telephone: ''
+    address: Eugeen Van Oyestraat 78/A, 8820 Torhout
+    services: []
+    color: '#db96a9'
+  De-Panne-Adinkerke:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Adinkerke
+    - De Panne
+    email: info@depanne-adinkerke.rodekruis.be
+    telephone: ''
+    address: Koninklijke Baan 7, 8660 De Panne
+    services: []
+    color: '#d9e0bf'
+  Diksmuide:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Beerst
+    - Diksmuide
+    - Driekapellen
+    - Esen
+    - Houthulst
+    - Jonkershove
+    - Kaaskerke
+    - Keiem
+    - Klerken
+    - Lampernisse
+    - Leke
+    - Merkem
+    - Nieuwkapelle
+    - Oostkerke
+    - Oudekapelle
+    - Pervijze
+    - Sint-JacobsKapelle
+    - Stuivekenskerke
+    - Vladslo
+    - Woumen
+    email: voorzitter@diksmuide.rodekruis.be
+    telephone: ''
+    address: Sint Sebastiaanlaan 8, 8600 Diksmuide
+    services: []
+    color: '#e5bad6'
+  Ieper:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Beselare
+    - Bikschote
+    - Boezinge
+    - Brielen
+    - Dikkebus
+    - Dranouter
+    - Elverdinge
+    - Geluveld
+    - Heuvelland
+    - Hollebeke
+    - Ieper
+    - Kemmel
+    - De Klijte
+    - Langemark
+    - Langemark-Poelkapelle
+    - Loker
+    - Mesen
+    - Nieuwkerke
+    - Passendale
+    - Poelkapelle
+    - Sint-Jan
+    - Vlamertinge
+    - Voormezele
+    - Westouter
+    - Wijtschate
+    - Wulvergem
+    - Zandvoorde
+    - Zillebeke
+    - Zonnebeke
+    - Zuidschote
+    email: webmaster@ieper.rodekruis.be
+    telephone: ''
+    address: Diksmuidseweg 346/a, 8904 Boezinge
+    services: []
+    color: '#98d577'
+  Koksijde:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Koksijde
+    - Oostduinkerke
+    - Wulpen
+    email: voorzitter@koksijde.rodekruis.be
+    telephone: ''
+    address: Helvetiastraat 47, 8670 Koksijde
+    services: []
+    color: '#d1d57f'
+  Kortemark:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Handzame
+    - Kortemark
+    - Werken
+    - Zarren
+    email: voorzitter@kortemark.rodekruis.be
+    telephone: ''
+    address: Elflijnenstraat 3, 8610 Handzame
+    lat: 51.02573634698911
+    lon: 3.006893245512283
+    services: []
+    color: '#badcc9'
+  Lauwe-Menen-Rekkem:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Lauwe
+    - Menen
+    - Rekkem
+    email: info@lauwe-menen-rekkem.rodekruis.be
+    telephone: ''
+    address: Voskenstraat 92, 8930 Menen
+    services: []
+    color: '#b1bdd9'
+  Middelkerke:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Leffinge
+    - Lombardsijde
+    - Mannekensvere
+    - Middelkerke
+    - Schore
+    - Sint-Pieters-Kapelle
+    - Slijpe
+    - Spermalie
+    - Westende
+    - Wilskerke
+    email: info@middelkerke.rodekruis.be
+    telephone: ''
+    address: Vaartdijk-Zuid 39/B, 8432 Leffinge
+    services: []
+    color: '#71bbd8'
+  Nieuwpoort:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Nieuwpoort
+    - Ramskapelle
+    - Sint-Joris
+    email: voorzitter@nieuwpoort.rodekruis.be
+    telephone: ''
+    address: Postbus 10, 8620 Nieuwpoort
+    lat: 51.13371262082455
+    lon: 2.749486399677301
+    services: []
+    color: '#cc9fbe'
+  Poperinge:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Krombeke
+    - Lo
+    - Lo-Reninge
+    - Noordschote
+    - Oostvleteren
+    - Pollinkhove
+    - Poperinge
+    - Proven
+    - Reninge
+    - Reningelst
+    - Roesbrugge-Haringe
+    - Vleteren
+    - Watou
+    - Westvleteren
+    - Woesten
+    email: webmaster@poperinge.rodekruis.be
+    telephone: ''
+    address: Gasthuisplein 1, 8970 Poperinge
+    services: []
+    color: '#84d8ba'
+  Veurne-Alveringem:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Alveringem
+    - Avekapelle
+    - Beauvoorde
+    - Beveren aan de Ijzer
+    - Booitshoeke
+    - Bulskamp
+    - De Moeren
+    - Eggewaartskapelle
+    - Gijverinkhove
+    - Hoogstade
+    - Houtem
+    - Izenberge
+    - Leisele
+    - Oeren
+    - Sint-Rijkers
+    - Stavele
+    - Steenkerke
+    - Veurne
+    - Vinkem
+    - Wulveringem
+    - Zoutenaaie
+    email: info@veurne.rodekruis.be
+    telephone: ''
+    address: Nijverheidsstraat 6, 8630 Veurne
+    services: []
+    color: '#c1abdb'
+  Wervik-Geluwe:
+    group: Westhoek
+    province: West-Vlaanderen
+    members:
+    - Geluwe
+    - Wervik
+    email: ''
+    telephone: ''
+    address: Speiestraat 34, 8940 Wervik
+    services: []
+    color: '#c5d2e8'
+  Avelgem:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Avelgem
+    - Bossuit
+    - Helkijn
+    - Kerkhove
+    - Outrijve
+    - Spiere
+    - Spiere-Helkijn
+    - Waarmaarde
+    email: webmaster@avelgem.rodekruis.be
+    telephone: ''
+    address: Oudenaardsesteenweg 52, 8580 Avelgem
+    services: []
+    color: '#c69a8a'
+  Deerlijk:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Deerlijk
+    email: ''
+    telephone: ''
+    address: Hoogstraat 46/B, 8540 Deerlijk
+    services: []
+    color: '#6dadd3'
+  Kortrijk:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Aalbeke
+    - Bellegem
+    - Bissegem
+    - Heule
+    - Kooigem
+    - Kortrijk
+    - Marke
+    - Rollegem
+    email: info@kortrijk.rodekruis.be
+    telephone: ''
+    address: Antoon Van Dycklaan 14/A, 8500 Kortrijk
+    services: []
+    color: '#ca686f'
+  Kuurne:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Kuurne
+    email: ''
+    telephone: ''
+    address: Marktplein 11, 8520 Kuurne
+    services: []
+    color: '#a695dd'
+  Ledegem:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Ledegem
+    - Rollegem-Kapelle
+    - Sint-Eloois-Winkel
+    email: ''
+    telephone: ''
+    address: Smisseknokstraat 4/A, 8880 Sint-Eloois-Winkel
+    services: []
+    color: '#a5a5d0'
+  Waregem-Anzegem:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Anzegem
+    - Beveren-Leie
+    - Desselgem
+    - Gijzelbrechtegem
+    - Ingooigem
+    - Kaster
+    - Sint-Eloois-Vijve
+    - Tiegem
+    - Vichte
+    - Waregem
+    email: info@waregem-anzegem.rodekruis.be
+    telephone: ''
+    address: Windhoek 29, 8790 Waregem
+    services: []
+    color: '#d574b3'
+  Wevelgem:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Gullegem
+    - Moorsele
+    - Wevelgem
+    email: info@wevelgem.rodekruis.be
+    telephone: ''
+    address: Papestraat 88, 8560 Wevelgem
+    services: []
+    color: '#d9a4a5'
+  Zwevegem-Harelbeke:
+    group: Zuid
+    province: West-Vlaanderen
+    members:
+    - Bavikhove
+    - Harelbeke
+    - Heestert
+    - Hulste
+    - Moen
+    - Otegem
+    - Sint-Denijs
+    - Zwevegem
+    email: secretaris@zwevegem-harelbeke.rodekruis.be
+    telephone: ''
+    address: Deerlijkstraat 199, 8550 Zwevegem
+    services: []
+    color: '#add4c7'
+  West-Vlaanderen:
+    type: provinciale_zetel
+    province: West-Vlaanderen
+    members:
+    - Klemskerke
+    - Vlissegem
+    transparent: true
+    address: Dirk Martensstraat 11, 8200 Brugge
+    email: westvlaanderen@rodekruis.be
+  West-Antwerpen:
+    type: provinciale_zetel
+    province: Antwerpen
+    members:
+      - Kalmthout
+    transparent: true
+    address: Belgiëlei 34, 2018 Antwerpen
+    email: antwerpen@rodekruis.be
+
+
