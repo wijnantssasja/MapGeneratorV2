@@ -475,52 +475,51 @@ async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id:
     dept_a = db.query(Department).filter(Department.id == dept_a_id).first()
     dept_b = db.query(Department).filter(Department.id == dept_b_id).first()
 
-    # Veilig concept object maken zonder de database te verwarren
-    merged_dept = Department(
-        name=f"{dept_a.name} - {dept_b.name}",
-        province=dept_a.province,
-        group=dept_a.group or dept_b.group,
-        address=dept_a.address, email=dept_a.email, telephone=dept_a.telephone,
-        color=dept_a.color, type="afdeling", lat=dept_a.lat, lon=dept_a.lon
-    )
+    # We gebruiken een standaard Python dictionary (geen SQLAlchemy object) om detachment errors te voorkomen!
+    merged_dept = {
+        "id": None,
+        "name": f"{dept_a.name} - {dept_b.name}",
+        "province": dept_a.province,
+        "group": dept_a.group or dept_b.group,
+        "address": dept_a.address,
+        "email": dept_a.email,
+        "telephone": dept_a.telephone,
+        "entiteitnummer": dept_a.entiteitnummer or dept_b.entiteitnummer,
+        "color": dept_a.color,
+        "type": "afdeling",
+        "transparent": False,
+        "lat": dept_a.lat,
+        "lon": dept_a.lon,
+        # Leden slim samenvoegen zonder dubbelingen
+        "members": [{"name": m.name} for m in dept_a.members] + [{"name": m.name} for m in dept_b.members if
+                                                                 m.name not in [x.name for x in dept_a.members]],
+        "vehicles": [{"name": v.name, "fleet_nr": v.fleet_nr, "address": v.address, "lat": v.lat, "lon": v.lon} for v in
+                     (dept_a.vehicles + dept_b.vehicles)],
+        "services": [{"name": s.name} for s in list(set(dept_a.services + dept_b.services))]
+    }
 
-    merged_dept.members = []
-    for m in dept_a.members:
-        merged_dept.members.append(Municipality(name=m.name))
-    existing_m = [m.name for m in dept_a.members]
-    for m in dept_b.members:
-        if m.name not in existing_m:
-            merged_dept.members.append(Municipality(name=m.name))
-
-    merged_dept.vehicles = []
-    for v in (dept_a.vehicles + dept_b.vehicles):
-        merged_dept.vehicles.append(Vehicle(name=v.name, fleet_nr=v.fleet_nr, address=v.address, lat=v.lat, lon=v.lon))
-
-    merged_dept.services = list(set(dept_a.services + dept_b.services))
     return templates.TemplateResponse(request=request, name="edit_department.html",
                                       context={"user": current_user, "dept": merged_dept})
 
 
-# --- VEILIG VERWIJDEREN AFDELING ---
 @app.post("/departments/delete/{dept_id}")
 async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
-    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if dept:
         verify_edit_permission(current_user, dept.province or "")
         log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
 
-        # Oplossing voor de 500 error: Eerst alle gekoppelde items handmatig wissen
-        db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
-        db.query(Municipality).filter(Municipality.department_id == dept.id).delete()
+        # Verbreek de vele-op-vele relatie voor disciplines veilig
         dept.services.clear()
 
+        # Verwijder de afdeling. Voertuigen en gemeenten worden automatisch mee verwijderd (cascade)!
         db.delete(dept)
         db.commit()
     return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
-
 
 # --- VEILIG VERWIJDEREN SIT ---
 @app.post("/sit-locations/delete/{sit_id}")
@@ -608,4 +607,75 @@ async def delete_cluster(clus_id: int, request: Request, db: Session = Depends(g
 
         db.delete(cluster)
         db.commit()
+    return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/regions/save")
+async def save_region(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    form = await request.form()
+    reg_id = form.get("region_id")
+    name = form.get("name")
+    province = form.get("province")
+    selected_depts = form.getlist("departments[]")
+
+    verify_edit_permission(current_user, province)
+
+    if reg_id:
+        region = db.query(Region).filter(Region.id == int(reg_id)).first()
+        verify_edit_permission(current_user, region.province)
+        region.name = name
+        region.province = province
+        log_action(db, current_user.username, "UPDATE", "Regio", region.name, "Regio gewijzigd")
+    else:
+        region = Region(name=name, province=province)
+        db.add(region)
+        db.flush()
+        log_action(db, current_user.username, "CREATE", "Regio", region.name, "Nieuwe regio")
+
+    # Koppel afdelingen aan regio
+    db.query(Department).filter(Department.region_id == region.id).update({"region_id": None})
+    if selected_depts:
+        db.query(Department).filter(Department.id.in_([int(d) for d in selected_depts])).update(
+            {"region_id": region.id}, synchronize_session=False)
+
+    db.commit()
+    return RedirectResponse(url="/regions", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/clusters/save")
+async def save_cluster(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    form = await request.form()
+    clus_id = form.get("cluster_id")
+    name = form.get("name")
+    province = form.get("province")
+    region_id = form.get("region_id")
+    selected_depts = form.getlist("departments[]")
+
+    verify_edit_permission(current_user, province)
+
+    if clus_id:
+        cluster = db.query(Cluster).filter(Cluster.id == int(clus_id)).first()
+        verify_edit_permission(current_user, cluster.province)
+        cluster.name = name
+        cluster.province = province
+        cluster.region_id = int(region_id) if region_id else None
+        log_action(db, current_user.username, "UPDATE", "Cluster", cluster.name, "Cluster gewijzigd")
+    else:
+        cluster = Cluster(name=name, province=province, region_id=int(region_id) if region_id else None)
+        db.add(cluster)
+        db.flush()
+        log_action(db, current_user.username, "CREATE", "Cluster", cluster.name, "Nieuwe cluster")
+
+    db.query(Department).filter(Department.cluster_id == cluster.id).update({"cluster_id": None})
+    if selected_depts:
+        db.query(Department).filter(Department.id.in_([int(d) for d in selected_depts])).update(
+            {"cluster_id": cluster.id}, synchronize_session=False)
+
+    db.commit()
     return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
