@@ -1,29 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Provinciale Zetels - Rode Kruis Map Generator{% endblock%}
-{% block content%}
-<h2>Provinciale Zetels</h2>
+{% block title %}Provinciale Zetels - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h2>Provinciale Zetels</h2>
+    <a href="/departments/new?type=zetel" style="background-color: #4CAF50; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+ Nieuwe Provinciale Zetel</a>
+</div>
+
+<div style="margin-bottom: 15px;">
+    <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Zoek op naam, adres of provincie..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+</div>
+
 <table>
     <thead>
-    <tr>
-        <th>Naam</th>
-        <th>Provincie</th>
-        <th>Adres</th>
-        <th>Email</th>
-        <th>Acties</th>
-    </tr>
+        <tr>
+            <th>Naam</th>
+            <th>Provincie</th>
+            <th>Adres</th>
+            <th>Email</th>
+            <th>Acties</th>
+        </tr>
     </thead>
     <tbody>
-    {% for zetel in zetels %}
-    <tr>
-        <td><strong>{{ zetel.name }}</strong></td>
-        <td>{{ zetel.province }}</td>
-        <td>{{ zetel.address or '-' }}</td>
-        <td>{{ zetel.email or '-' }}</td>
-        <td>
-            <a href="/departments/edit/{{ zetel.id }}" class="btn-edit">Bewerk</a>
-        </td>
-    </tr>
-    {% endfor %}
+        {% for zetel in zetels %}
+        <tr>
+            <td><strong>{{ zetel.name }}</strong></td>
+            <td>{{ zetel.province }}</td>
+            <td>{{ zetel.address or '-' }}</td>
+            <td>{{ zetel.email or '-' }}</td>
+            <td>
+                <a href="/departments/edit/{{ zetel.id }}" class="btn-edit">Bewerk</a>
+            </td>
+        </tr>
+        {% endfor %}
     </tbody>
 </table>
+
+<script>
+function filterTable() {
+    let input = document.getElementById("tableSearch");
+    let filter = input.value.toLowerCase();
+    let tr = document.querySelectorAll("tbody tr");
+    tr.forEach(row => {
+        let text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+    });
+}
+</script>
 {% endblock %}

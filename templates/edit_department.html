@@ -5,8 +5,8 @@
 <form action="{% if dept and dept.id %}/departments/edit/{{ dept.id }}{% else %}/departments/new{% endif %}"
       method="POST">
     <div class="checkbox-group">
-        <input type="checkbox" id="is_provinciale_zetel" name="is_provinciale_zetel" {% if dept.type==
-        'provinciale_zetel' %}checked{% endif %}>
+        <input type="checkbox" id="is_provinciale_zetel" name="is_provinciale_zetel" {% if (dept and dept.type==
+        'provinciale_zetel') or request.query_params.get('type') == 'zetel' %}checked{% endif %}>
         <label for="is_provinciale_zetel" style="margin:0;">Dit is een Provinciale Zetel</label>
     </div>
 
@@ -149,18 +149,23 @@
 
     <div class="actions">
         {% if dept and dept.id %}
-        <form action="/departments/delete/{{ dept.id }}" method="POST"
-              onsubmit="return confirm('Weet je zeker dat je deze afdeling wilt verwijderen?');"
-              style="display:inline; float:left;">
-            <button type="submit"
-                    style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                Verwijder Afdeling
-            </button>
-        </form>
+        <button type="submit" form="deleteForm"
+                onclick="return confirm('Weet je zeker dat je deze afdeling wilt verwijderen?');"
+                style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; float: left;">
+            Verwijder Afdeling
+        </button>
         {% endif %}
         <a href="/departments" class="btn-cancel">Annuleren</a>
         <button type="submit" class="btn-submit">Opslaan</button>
     </div>
+</form>
+
+{% if dept and dept.id %}
+<form id="deleteForm" action="/departments/delete/{{ dept.id }}" method="POST" style="display:none;"></form>
+{% endif %}
+<a href="/departments" class="btn-cancel">Annuleren</a>
+<button type="submit" class="btn-submit">Opslaan</button>
+</div>
 </form>
 </div>
 {% endblock %}

@@ -48,6 +48,9 @@
             <a href="/regions" class="{% if '/regions' in request.url.path %}active{% endif %}">Regio's</a>
             <a href="/clusters" class="{% if '/clusters' in request.url.path %}active{% endif %}">Clusters</a>
             <a href="/audit-logs" class="{% if '/audit-logs' in request.url.path %}active{% endif %}">Logboek</a>
+            {% if user and user.role == 'admin' %}
+            <a href="/users" class="{% if '/users' in request.url.path %}active{% endif %}" style="color: #1976d2;">Gebruikers</a>
+            {% endif %}
         </div>
     </div>
     <div class="user-info">

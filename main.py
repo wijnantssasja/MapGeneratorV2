@@ -6,6 +6,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import bcrypt
 from database import AuditLog, Municipality
 from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
+from types import SimpleNamespace
 
 # Create database tables if not exist
 Base.metadata.create_all(bind=engine)
@@ -475,33 +476,52 @@ async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id:
     dept_a = db.query(Department).filter(Department.id == dept_a_id).first()
     dept_b = db.query(Department).filter(Department.id == dept_b_id).first()
 
-    # We gebruiken een standaard Python dictionary (geen SQLAlchemy object) om detachment errors te voorkomen!
-    merged_dept = {
-        "id": None,
-        "name": f"{dept_a.name} - {dept_b.name}",
-        "province": dept_a.province,
-        "group": dept_a.group or dept_b.group,
-        "address": dept_a.address,
-        "email": dept_a.email,
-        "telephone": dept_a.telephone,
-        "entiteitnummer": dept_a.entiteitnummer or dept_b.entiteitnummer,
-        "color": dept_a.color,
-        "type": "afdeling",
-        "transparent": False,
-        "lat": dept_a.lat,
-        "lon": dept_a.lon,
-        # Leden slim samenvoegen zonder dubbelingen
-        "members": [{"name": m.name} for m in dept_a.members] + [{"name": m.name} for m in dept_b.members if
-                                                                 m.name not in [x.name for x in dept_a.members]],
-        "vehicles": [{"name": v.name, "fleet_nr": v.fleet_nr, "address": v.address, "lat": v.lat, "lon": v.lon} for v in
-                     (dept_a.vehicles + dept_b.vehicles)],
-        "services": [{"name": s.name} for s in list(set(dept_a.services + dept_b.services))]
-    }
+    if not dept_a or not dept_b:
+        raise HTTPException(status_code=400, detail="Eén of beide afdelingen werden niet gevonden.")
+
+    # Leden verzamelen zonder dubbelingen
+    merged_members_names = []
+    for m in dept_a.members:
+        if m.name and m.name not in merged_members_names:
+            merged_members_names.append(m.name)
+    for m in dept_b.members:
+        if m.name and m.name not in merged_members_names:
+            merged_members_names.append(m.name)
+
+    # Voertuigen verzamelen
+    merged_vehicles = []
+    for v in (dept_a.vehicles + dept_b.vehicles):
+        merged_vehicles.append(
+            SimpleNamespace(name=v.name, fleet_nr=v.fleet_nr, address=v.address, lat=v.lat, lon=v.lon))
+
+    # Services verzamelen (Unieke namen)
+    service_names = list(set([s.name for s in dept_a.services] + [s.name for s in dept_b.services]))
+
+    # Maak een dummy object aan met SimpleNamespace dat exact reageert als een model instance
+    merged_dept = SimpleNamespace(
+        id=None,
+        name=f"{dept_a.name} - {dept_b.name}",
+        province=dept_a.province,
+        group=dept_a.group or dept_b.group,
+        address=dept_a.address,
+        email=dept_a.email,
+        telephone=dept_a.telephone,
+        entiteitnummer=dept_a.entiteitnummer or dept_b.entiteitnummer,
+        color=dept_a.color,
+        type="afdeling",
+        transparent=False,
+        lat=dept_a.lat,
+        lon=dept_a.lon,
+        members=[SimpleNamespace(name=m_name) for m_name in merged_members_names],
+        vehicles=merged_vehicles,
+        services=[SimpleNamespace(name=s_name) for s_name in service_names]
+    )
 
     return templates.TemplateResponse(request=request, name="edit_department.html",
                                       context={"user": current_user, "dept": merged_dept})
 
 
+# --- VEILIG VERWIJDEREN AFDELING / PROVINCIALE ZETEL ---
 @app.post("/departments/delete/{dept_id}")
 async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
@@ -509,17 +529,18 @@ async def delete_department(dept_id: int, request: Request, db: Session = Depend
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     dept = db.query(Department).filter(Department.id == dept_id).first()
+    is_zetel = False
     if dept:
         verify_edit_permission(current_user, dept.province or "")
+        is_zetel = (dept.type == "provinciale_zetel")
         log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
 
-        # Verbreek de vele-op-vele relatie voor disciplines veilig
         dept.services.clear()
-
-        # Verwijder de afdeling. Voertuigen en gemeenten worden automatisch mee verwijderd (cascade)!
         db.delete(dept)
         db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+
+    target_url = "/provinciale-zetels" if is_zetel else "/departments"
+    return RedirectResponse(url=target_url, status_code=status.HTTP_303_SEE_OTHER)
 
 # --- VEILIG VERWIJDEREN SIT ---
 @app.post("/sit-locations/delete/{sit_id}")
@@ -679,3 +700,107 @@ async def save_cluster(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =========================================================
+# GEBRUIKERSBEHEER (USER MANAGEMENT - ADMIN ONLY)
+# =========================================================
+@app.get("/users", response_class=HTMLResponse)
+async def list_users(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+    users = db.query(User).order_by(User.username).all()
+    return templates.TemplateResponse(request=request, name="users.html",
+                                      context={"user": current_user, "users": users})
+
+
+@app.get("/users/new", response_class=HTMLResponse)
+async def new_user_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+    return templates.TemplateResponse(request=request, name="edit_user.html",
+                                      context={"user": current_user, "edit_user": None})
+
+
+@app.post("/users/new")
+async def create_user_route(
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
+        role: str = Form(...),
+        province_access: str = Form("All"),
+        db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=400, detail="Gebruikersnaam bestaat al.")
+
+    hashed_pwd = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    new_user = User(username=username, password_hash=hashed_pwd, role=role, province_access=province_access)
+    db.add(new_user)
+    log_action(db, current_user.username, "CREATE", "Gebruiker", username, f"Rol: {role}, Provincie: {province_access}")
+    db.commit()
+    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/users/edit/{user_id}", response_class=HTMLResponse)
+async def edit_user_page(user_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden.")
+    return templates.TemplateResponse(request=request, name="edit_user.html",
+                                      context={"user": current_user, "edit_user": target_user})
+
+
+@app.post("/users/edit/{user_id}")
+async def update_user(
+        user_id: int,
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(None),
+        role: str = Form(...),
+        province_access: str = Form("All"),
+        db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden.")
+
+    target_user.username = username
+    target_user.role = role
+    target_user.province_access = province_access
+
+    if password and password.strip():
+        target_user.password_hash = bcrypt.hashpw(password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    log_action(db, current_user.username, "UPDATE", "Gebruiker", username, f"Rol: {role}, Provincie: {province_access}")
+    db.commit()
+    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/users/delete/{user_id}")
+async def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if target_user:
+        if target_user.id == current_user.id:
+            raise HTTPException(status_code=400, detail="Je kunt je eigen account niet verwijderen!")
+        log_action(db, current_user.username, "DELETE", "Gebruiker", target_user.username, "Gebruiker verwijderd")
+        db.delete(target_user)
+        db.commit()
+    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
