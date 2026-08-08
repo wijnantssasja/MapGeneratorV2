@@ -221,60 +221,8 @@ async def new_sit_page(request: Request, db: Session = Depends(get_db)):
 
 # --- REGIO'S BEHEER (BEWERKEN & VERWIJDEREN) ---
 
-@app.get("/regions/edit/{reg_id}", response_class=HTMLResponse)
-async def edit_region_page(request: Request, reg_id: int, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    region = db.query(Region).filter(Region.id == reg_id).first()
-    if not region:
-        raise HTTPException(status_code=404, detail="Regio niet gevonden")
-        
-    regions = db.query(Region).all()
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
-    
-    return templates.TemplateResponse(
-        request=request, 
-        name="regions.html", 
-        context={"user": current_user, "regions": regions, "departments": departments, "edit_region": region}
-    )
-
 # --- CLUSTERS BEHEER (BEWERKEN & VERWIJDEREN) ---
 
-@app.get("/clusters/edit/{clus_id}", response_class=HTMLResponse)
-async def edit_cluster_page(request: Request, clus_id: int, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    cluster = db.query(Cluster).filter(Cluster.id == clus_id).first()
-    if not cluster:
-        raise HTTPException(status_code=404, detail="Cluster niet gevonden")
-        
-    clusters = db.query(Cluster).all()
-    regions = db.query(Region).all()
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
-    
-    return templates.TemplateResponse(
-        request=request, 
-        name="clusters.html", 
-        context={"user": current_user, "clusters": clusters, "regions": regions, "departments": departments, "edit_cluster": cluster}
-    )
-
-
-@app.get("/departments/merge", response_class=HTMLResponse)
-async def merge_select_page(request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-    
-    if current_user.role in ["admin", "nationaal"]:
-        departments = db.query(Department).filter(Department.type != "provinciale_zetel").order_by(Department.name).all()
-    else:
-        departments = db.query(Department).filter(Department.province == current_user.province_access, Department.type != "provinciale_zetel").order_by(Department.name).all()
-
-    return templates.TemplateResponse(request=request, name="merge_departments.html", context={"user": current_user, "departments": departments})
 
 @app.get("/audit-logs", response_class=HTMLResponse)
 async def view_audit_logs(request: Request, db: Session = Depends(get_db)):
@@ -427,50 +375,6 @@ async def update_department(request: Request, dept_id: int, db: Session = Depend
     return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/departments/delete/{dept_id}")
-async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    dept = db.query(Department).filter(Department.id == dept_id).first()
-    if dept:
-        verify_edit_permission(current_user, dept.province)
-        log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
-        db.delete(dept)
-        db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@app.post("/departments/merge", response_class=HTMLResponse)
-async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...),
-                        db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    dept_a = db.query(Department).get(dept_a_id)
-    dept_b = db.query(Department).get(dept_b_id)
-
-    # Maak VOLLEDIG LOSGEKOPPELDE (detached) kopieën voor de template. Dit voorkomt SQLAlchemy errors.
-    merged_dept = Department(
-        name=f"{dept_a.name} - {dept_b.name}", province=dept_a.province, group=dept_a.group or dept_b.group,
-        address=dept_a.address, email=dept_a.email, telephone=dept_a.telephone, color=dept_a.color,
-        type="afdeling", lat=dept_a.lat, lon=dept_a.lon
-    )
-
-    merged_dept.members = [Municipality(name=m.name) for m in dept_a.members]
-    existing_m = [m.name for m in dept_a.members]
-    for m in dept_b.members:
-        if m.name not in existing_m: merged_dept.members.append(Municipality(name=m.name))
-
-    merged_dept.vehicles = [Vehicle(name=v.name, fleet_nr=v.fleet_nr, address=v.address, lat=v.lat, lon=v.lon) for v in
-                            dept_a.vehicles + dept_b.vehicles]
-    merged_dept.services = list(set(dept_a.services + dept_b.services))
-
-    # Render de edit template met deze dummy data (gebruiker moet nog handmatig op Opslaan klikken!)
-    return templates.TemplateResponse(request=request, name="edit_department.html",
-                                      context={"user": current_user, "dept": merged_dept})
-
-
 # =========================================================
 # SIT LOCATIES: BEWERKEN, TOEVOEGEN & VERWIJDEREN
 # =========================================================
@@ -543,6 +447,82 @@ async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
 
 
+# --- FUSIE / MERGE (MET BEIDE ROUTES) ---
+@app.get("/departments/merge", response_class=HTMLResponse)
+async def merge_select_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    if current_user.role in ["admin", "nationaal"]:
+        departments = db.query(Department).filter(Department.type != "provinciale_zetel").order_by(
+            Department.name).all()
+    else:
+        departments = db.query(Department).filter(Department.province == current_user.province_access,
+                                                  Department.type != "provinciale_zetel").order_by(
+            Department.name).all()
+    return templates.TemplateResponse(request=request, name="merge_departments.html",
+                                      context={"user": current_user, "departments": departments})
+
+
+@app.post("/departments/merge", response_class=HTMLResponse)
+async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...),
+                        db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept_a = db.query(Department).filter(Department.id == dept_a_id).first()
+    dept_b = db.query(Department).filter(Department.id == dept_b_id).first()
+
+    # Veilig concept object maken zonder de database te verwarren
+    merged_dept = Department(
+        name=f"{dept_a.name} - {dept_b.name}",
+        province=dept_a.province,
+        group=dept_a.group or dept_b.group,
+        address=dept_a.address, email=dept_a.email, telephone=dept_a.telephone,
+        color=dept_a.color, type="afdeling", lat=dept_a.lat, lon=dept_a.lon
+    )
+
+    merged_dept.members = []
+    for m in dept_a.members:
+        merged_dept.members.append(Municipality(name=m.name))
+    existing_m = [m.name for m in dept_a.members]
+    for m in dept_b.members:
+        if m.name not in existing_m:
+            merged_dept.members.append(Municipality(name=m.name))
+
+    merged_dept.vehicles = []
+    for v in (dept_a.vehicles + dept_b.vehicles):
+        merged_dept.vehicles.append(Vehicle(name=v.name, fleet_nr=v.fleet_nr, address=v.address, lat=v.lat, lon=v.lon))
+
+    merged_dept.services = list(set(dept_a.services + dept_b.services))
+    return templates.TemplateResponse(request=request, name="edit_department.html",
+                                      context={"user": current_user, "dept": merged_dept})
+
+
+# --- VEILIG VERWIJDEREN AFDELING ---
+@app.post("/departments/delete/{dept_id}")
+async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if dept:
+        verify_edit_permission(current_user, dept.province or "")
+        log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
+
+        # Oplossing voor de 500 error: Eerst alle gekoppelde items handmatig wissen
+        db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
+        db.query(Municipality).filter(Municipality.department_id == dept.id).delete()
+        dept.services.clear()
+
+        db.delete(dept)
+        db.commit()
+    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --- VEILIG VERWIJDEREN SIT ---
 @app.post("/sit-locations/delete/{sit_id}")
 async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
@@ -550,8 +530,82 @@ async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db
 
     sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
     if sit:
-        verify_edit_permission(current_user, sit.province)
-        log_action(db, current_user.username, "DELETE", "SIT-Locatie", sit.name, "SIT definitief verwijderd")
+        verify_edit_permission(current_user, sit.province or "")
+        log_action(db, current_user.username, "DELETE", "SIT-Locatie", sit.name, "SIT verwijderd")
+
+        # Eerst voertuigen wissen
+        db.query(SitVehicle).filter(SitVehicle.sit_location_id == sit.id).delete()
+
         db.delete(sit)
         db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --- REGIO'S BEWERKEN & VERWIJDEREN ---
+@app.get("/regions/edit/{reg_id}", response_class=HTMLResponse)
+async def edit_region_page(request: Request, reg_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    region = db.query(Region).filter(Region.id == reg_id).first()
+    if not region: raise HTTPException(status_code=404, detail="Regio niet gevonden")
+
+    regions = db.query(Region).all()
+    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
+    return templates.TemplateResponse(request=request, name="regions.html",
+                                      context={"user": current_user, "regions": regions, "departments": departments,
+                                               "edit_region": region})
+
+
+@app.post("/regions/delete/{reg_id}")
+async def delete_region(reg_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    region = db.query(Region).filter(Region.id == reg_id).first()
+    if region:
+        verify_edit_permission(current_user, region.province or "")
+        log_action(db, current_user.username, "DELETE", "Regio", region.name, "Regio verwijderd")
+
+        # Oplossing voor 500 error: Maak afdelingen en clusters los van de regio voordat hij verwijderd wordt
+        db.query(Department).filter(Department.region_id == reg_id).update({"region_id": None})
+        db.query(Cluster).filter(Cluster.region_id == reg_id).update({"region_id": None})
+
+        db.delete(region)
+        db.commit()
+    return RedirectResponse(url="/regions", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --- CLUSTERS BEWERKEN & VERWIJDEREN ---
+@app.get("/clusters/edit/{clus_id}", response_class=HTMLResponse)
+async def edit_cluster_page(request: Request, clus_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    cluster = db.query(Cluster).filter(Cluster.id == clus_id).first()
+    if not cluster: raise HTTPException(status_code=404, detail="Cluster niet gevonden")
+
+    clusters = db.query(Cluster).all()
+    regions = db.query(Region).all()
+    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
+    return templates.TemplateResponse(request=request, name="clusters.html",
+                                      context={"user": current_user, "clusters": clusters, "regions": regions,
+                                               "departments": departments, "edit_cluster": cluster})
+
+
+@app.post("/clusters/delete/{clus_id}")
+async def delete_cluster(clus_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    cluster = db.query(Cluster).filter(Cluster.id == clus_id).first()
+    if cluster:
+        verify_edit_permission(current_user, cluster.province or "")
+        log_action(db, current_user.username, "DELETE", "Cluster", cluster.name, "Cluster verwijderd")
+
+        # Oplossing voor 500 error: Maak afdelingen los
+        db.query(Department).filter(Department.cluster_id == clus_id).update({"cluster_id": None})
+
+        db.delete(cluster)
+        db.commit()
+    return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
