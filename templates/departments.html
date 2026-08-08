@@ -1,46 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Afdelingen - Rode Kruis Map Generator{% endblock %}
+
 {% block content %}
-        <h2>Afdelingen Overzicht</h2>
-	<a href="/departments/new" style="background-color: #4CAF50; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+ Nieuwe Afdeling</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h2>Afdelingen Overzicht</h2>
+    <a href="/departments/new" style="background-color: #4CAF50; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+ Nieuwe Afdeling</a>
+<a href="/departments/merge" style="background-color: #1976d2; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">Fusie (Samenvoegen)</a>
+</div>
+
 <div style="margin-bottom: 15px;">
     <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Zoek op naam, adres of provincie..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
 </div>
+
 <table>
-            <thead>
-                <tr>
-                    <th>Naam</th>
-                    <th>Provincie</th>
-                    <th>Regio (Group)</th>
-                    <th>Adres</th>
-                    <th>Kleur</th>
-                    <th>Acties</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for dept in departments %}
-                <tr>
-                    <td><strong>{{ dept.name }}</strong></td>
-                    <td>{{ dept.province }}</td>
-                    <td>{{ dept.group or '-' }}</td>
-                    <td>{{ dept.address or '-' }}</td>
-                    <td>
-                        {% if dept.color %}
-                        <span style="display:inline-block; width:15px; height:15px; background-color:{{ dept.color }}; border:1px solid #ccc; vertical-align:middle;"></span>
-                        {{ dept.color }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="/departments/edit/{{ dept.id }}" class="btn-edit">Bewerk</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-{% endblock %}
-{% block script %}
+    <thead>
+        <tr>
+            <th>Naam</th>
+            <th>Provincie</th>
+            <th>Regio (Group)</th>
+            <th>Adres</th>
+            <th>Kleur</th>
+            <th>Acties</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dept in departments %}
+        <tr>
+            <td><strong>{{ dept.name }}</strong></td>
+            <td>{{ dept.province }}</td>
+            <td>{{ dept.group or '-' }}</td>
+            <td>{{ dept.address or '-' }}</td>
+            <td>
+                {% if dept.color %}
+                <span style="display:inline-block; width:15px; height:15px; background-color:{{ dept.color }}; border:1px solid #ccc; vertical-align:middle;"></span>
+                {{ dept.color }}
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>
+                <a href="/departments/edit/{{ dept.id }}" class="btn-edit">Bewerk</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 <script>
 function filterTable() {
     let input = document.getElementById("tableSearch");

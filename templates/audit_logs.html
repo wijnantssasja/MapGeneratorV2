@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Logboek - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<h2>Systeem Logboek</h2>
+<p style="color: #666; font-size: 14px;">Overzicht van de laatste 200 wijzigingen (Read-only).</p>
+<table>
+    <thead>
+        <tr>
+            <th>Datum/Tijd</th>
+            <th>Gebruiker</th>
+            <th>Actie</th>
+            <th>Tabel</th>
+            <th>Naam/Onderwerp</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.timestamp }}</td>
+            <td><strong>{{ log.username }}</strong></td>
+            <td>
+                {% if log.action == 'CREATE' %}<span style="color: green; font-weight: bold;">{{ log.action }}</span>{% endif %}
+                {% if log.action == 'UPDATE' %}<span style="color: blue; font-weight: bold;">{{ log.action }}</span>{% endif %}
+                {% if log.action == 'DELETE' %}<span style="color: red; font-weight: bold;">{{ log.action }}</span>{% endif %}
+            </td>
+            <td>{{ log.table_name }}</td>
+            <td>{{ log.row_name }}</td>
+            <td style="font-size: 12px; color: #555;">{{ log.details or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">Nog geen activiteiten geregistreerd.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

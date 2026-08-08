@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 import bcrypt
-
+from database import AuditLog, Municipality
 from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
 
 # Create database tables if not exist
@@ -356,14 +356,28 @@ async def delete_department(dept_id: int, request: Request, db: Session = Depend
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
+
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if dept:
         verify_edit_permission(current_user, dept.province)
+        log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
         db.delete(dept)
         db.commit()
     return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
 
+@app.post("/sit-locations/delete/{sit_id}")
+async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
+    if sit:
+        verify_edit_permission(current_user, sit.province)
+        log_action(db, current_user.username, "DELETE", "SIT-Locatie", sit.name, "SIT definitief verwijderd")
+        db.delete(sit)
+        db.commit()
+    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
 
 # --- SIT LOCATIES TOEVOEGEN & VERWIDEREN ---
 
@@ -391,19 +405,6 @@ async def create_sit(request: Request, db: Session = Depends(get_db)):
     )
     db.add(new_sit)
     db.commit()
-    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/sit-locations/delete/{sit_id}")
-async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
-    if sit:
-        verify_edit_permission(current_user, sit.province)
-        db.delete(sit)
-        db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -544,3 +545,58 @@ async def delete_cluster(clus_id: int, request: Request, db: Session = Depends(g
         db.commit()
     return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
 
+def log_action(db: Session, username: str, action: str, table_name: str, row_name: str, details: str = ""):
+    log = AuditLog(username=username, action=action, table_name=table_name, row_name=row_name, details=details)
+    db.add(log)
+
+
+@app.get("/departments/merge", response_class=HTMLResponse)
+async def merge_select_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    
+    if current_user.role in ["admin", "nationaal"]:
+        departments = db.query(Department).filter(Department.type != "provinciale_zetel").order_by(Department.name).all()
+    else:
+        departments = db.query(Department).filter(Department.province == current_user.province_access, Department.type != "provinciale_zetel").order_by(Department.name).all()
+
+    return templates.TemplateResponse(request=request, name="merge_departments.html", context={"user": current_user, "departments": departments})
+
+@app.get("/audit-logs", response_class=HTMLResponse)
+async def view_audit_logs(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    logs = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(200).all()
+    return templates.TemplateResponse(request=request, name="audit_logs.html", context={"user": current_user, "logs": logs})
+
+@app.post("/departments/merge", response_class=HTMLResponse)
+async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...), db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+        
+    dept_a = db.query(Department).get(dept_a_id)
+    dept_b = db.query(Department).get(dept_b_id)
+    
+    # Maak een dummy object in het RAM geheugen voor de bewerk-pagina
+    merged_dept = Department(
+        name=f"{dept_a.name} - {dept_b.name}",
+        province=dept_a.province,
+        group=dept_a.group or dept_b.group,
+        address=dept_a.address,
+        email=dept_a.email,
+        telephone=dept_a.telephone,
+        color=dept_a.color,
+        type="afdeling",
+        lat=dept_a.lat,
+        lon=dept_a.lon
+    )
+    
+    # Combineer leden, voertuigen en disciplines
+    merged_dept.members = dept_a.members + [m for m in dept_b.members if m not in dept_a.members]
+    merged_dept.vehicles = dept_a.vehicles + dept_b.vehicles
+    merged_dept.services = list(set(dept_a.services + dept_b.services))
+    
+    return templates.TemplateResponse(request=request, name="edit_department.html", context={"user": current_user, "dept": merged_dept})

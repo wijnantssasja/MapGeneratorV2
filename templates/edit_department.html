@@ -2,7 +2,7 @@
 {% block title %}Bewerk Afdeling - Rode Kruis Map Generator{% endblock %}
 {% block content %}
 <h2>Bewerk Afdeling: {{ dept.name }}</h2>
-        <form action="/departments/edit/{{ dept.id }}" method="POST">
+        <form action="{% if dept and dept.id %}/departments/edit/{{ dept.id }}{% else %}/departments/new{% endif %}" method="POST">
             
             <div class="checkbox-group">
                 <input type="checkbox" id="is_provinciale_zetel" name="is_provinciale_zetel" {% if dept.type == 'provinciale_zetel' %}checked{% endif %}>
@@ -80,6 +80,7 @@
     {% if dept and dept.members %}
         <ul style="margin: 0; padding-left: 20px;">
         {% for member in dept.members %}
+            <input type="hidden" name="members[]" value="{{ member.name }}">
             <li>{{ member.name }}</li>
         {% endfor %}
         </ul>
