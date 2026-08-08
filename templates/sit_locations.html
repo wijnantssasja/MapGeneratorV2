@@ -4,58 +4,61 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
     <h2>SIT Locaties</h2>
-    <a href="/sit-locations/new" style="background-color: #4CAF50; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+ Nieuwe SIT Locatie</a>
+    <a href="/sit-locations/new"
+       style="background-color: #4CAF50; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+
+        Nieuwe SIT Locatie</a>
 </div>
 
 <div style="margin-bottom: 15px;">
-    <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Zoek op naam, type of adres..." style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+    <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Zoek op naam, type of adres..."
+           style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
 </div>
 
 <table>
     <thead>
-        <tr>
-            <th>Naam</th>
-            <th>Provincie</th>
-            <th>Type</th>
-            <th>Adres</th>
-            <th>Acties</th>
-        </tr>
+    <tr>
+        <th>Naam</th>
+        <th>Provincie</th>
+        <th>Type</th>
+        <th>Adres</th>
+        <th>Acties</th>
+    </tr>
     </thead>
     <tbody>
-        {% for sit in sits %}
-        <tr>
-            <td><strong>{{ sit.name }}</strong></td>
-            <td>{{ sit.province or 'Onbekend' }}</td>
-            <td>{{ sit.type or '-' }}</td>
-            <td>{{ sit.address or '-' }}</td>
-            <td>
-                <a href="/sit-locations/edit/{{ sit.id }}" class="btn-edit">Bewerk</a>
-            </td>
-        </tr>
-        {% endfor %}
+    {% for sit in sits %}
+    <tr>
+        <td><strong>{{ sit.name }}</strong></td>
+        <td>{{ sit.province or 'Onbekend' }}</td>
+        <td>{{ sit.type or '-' }}</td>
+        <td>{{ sit.address or '-' }}</td>
+        <td>
+            <a href="/sit-locations/edit/{{ sit.id }}" class="btn-edit">Bewerk</a>
+        </td>
+    </tr>
+    {% endfor %}
     </tbody>
 </table>
 
 <script>
-function filterTable() {
-    let input = document.getElementById("tableSearch");
-    let filter = input.value.toLowerCase();
-    let table = document.querySelector("table");
-    let tr = table.getElementsByTagName("tr");
+    function filterTable() {
+        let input = document.getElementById("tableSearch");
+        let filter = input.value.toLowerCase();
+        let table = document.querySelector("table");
+        let tr = table.getElementsByTagName("tr");
 
-    for (let i = 1; i < tr.length; i++) {
-        let td = tr[i].getElementsByTagName("td");
-        let match = false;
-        for (let j = 0; j < td.length; j++) {
-            if (td[j]) {
-                if (td[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
-                    match = true;
-                    break;
+        for (let i = 1; i < tr.length; i++) {
+            let td = tr[i].getElementsByTagName("td");
+            let match = false;
+            for (let j = 0; j < td.length; j++) {
+                if (td[j]) {
+                    if (td[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
+                        match = true;
+                        break;
+                    }
                 }
             }
+            tr[i].style.display = match ? "" : "none";
         }
-        tr[i].style.display = match ? "" : "none";
     }
-}
 </script>
 {% endblock %}

@@ -34,31 +34,33 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    {% if user %}
-    <div class="header">
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <h1>Rode Kruis Kaart</h1>
-            <div class="nav-links">
-                <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-                <a href="/departments" class="{% if '/departments' in request.url.path %}active{% endif %}">Afdelingen</a>
-                <a href="/provinciale-zetels" class="{% if '/provinciale-zetels' in request.url.path %}active{% endif %}">Prov. Zetels</a>
-                <a href="/sit-locations" class="{% if '/sit-locations' in request.url.path %}active{% endif %}">SIT Locaties</a>
+{% if user %}
+<div class="header">
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <h1>Rode Kruis Kaart</h1>
+        <div class="nav-links">
+            <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
+            <a href="/departments" class="{% if '/departments' in request.url.path %}active{% endif %}">Afdelingen</a>
+            <a href="/provinciale-zetels" class="{% if '/provinciale-zetels' in request.url.path %}active{% endif %}">Prov.
+                Zetels</a>
+            <a href="/sit-locations" class="{% if '/sit-locations' in request.url.path %}active{% endif %}">SIT
+                Locaties</a>
             <a href="/regions" class="{% if '/regions' in request.url.path %}active{% endif %}">Regio's</a>
-                <a href="/clusters" class="{% if '/clusters' in request.url.path %}active{% endif %}">Clusters</a>
-		<a href="/audit-logs" class="{% if '/audit-logs' in request.url.path %}active{% endif %}">Logboek</a>
-	    </div>
-        </div>
-        <div class="user-info">
-            <span>Ingelogd als: <strong>{{ user.username }}</strong> ({{ user.role }})</span>
-            <a href="/logout" class="btn-logout">Uitloggen</a>
+            <a href="/clusters" class="{% if '/clusters' in request.url.path %}active{% endif %}">Clusters</a>
+            <a href="/audit-logs" class="{% if '/audit-logs' in request.url.path %}active{% endif %}">Logboek</a>
         </div>
     </div>
-    {% endif %}
+    <div class="user-info">
+        <span>Ingelogd als: <strong>{{ user.username }}</strong> ({{ user.role }})</span>
+        <a href="/logout" class="btn-logout">Uitloggen</a>
+    </div>
+</div>
+{% endif %}
 
-    <div class="content" {% block content_style %}{% endblock %}>
-        {% block content %}{% endblock %}
-    </div>
-    
-    {% block scripts %}{% endblock %}
+<div class="content" {% block content_style %}{% endblock %}>
+    {% block content %}{% endblock %}
+</div>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>

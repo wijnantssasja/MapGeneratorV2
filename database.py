@@ -1,5 +1,6 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
+from datetime import datetime
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./mapgenerator.db"
 
@@ -17,6 +18,7 @@ department_services = Table(
     Column('service_id', Integer, ForeignKey('services.id'), primary_key=True)
 )
 
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, index=True)
@@ -25,6 +27,7 @@ class User(Base):
     role = Column(String(20), nullable=False)
     province_access = Column(String(50), nullable=True)
 
+
 class CoordinateCache(Base):
     __tablename__ = 'coordinate_cache'
     id = Column(Integer, primary_key=True, index=True)
@@ -32,10 +35,12 @@ class CoordinateCache(Base):
     lat = Column(Float, nullable=False)
     lon = Column(Float, nullable=False)
 
+
 class Service(Base):
     __tablename__ = 'services'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
+
 
 class Region(Base):
     __tablename__ = 'regions'
@@ -44,6 +49,7 @@ class Region(Base):
     province = Column(String(50), nullable=False)
     clusters = relationship('Cluster', back_populates='region', cascade="all, delete-orphan")
     departments = relationship('Department', back_populates='region_rel')
+
 
 class Cluster(Base):
     __tablename__ = 'clusters'
@@ -54,11 +60,12 @@ class Cluster(Base):
     region = relationship('Region', back_populates='clusters')
     departments = relationship('Department', back_populates='cluster_rel')
 
+
 class Department(Base):
     __tablename__ = 'departments'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    group = Column(String(50), nullable=True) # Legacy / text group
+    group = Column(String(50), nullable=True)  # Legacy / text group
     province = Column(String(50), nullable=False, index=True)
     type = Column(String(50), default="afdeling")
     email = Column(String(100), nullable=True)
@@ -69,16 +76,17 @@ class Department(Base):
     transparent = Column(Boolean, default=False)
     lat = Column(Float, nullable=True)
     lon = Column(Float, nullable=True)
-    
+
     # Hiërarchie relaties
     region_id = Column(Integer, ForeignKey('regions.id'), nullable=True)
     cluster_id = Column(Integer, ForeignKey('clusters.id'), nullable=True)
     region_rel = relationship('Region', back_populates='departments')
     cluster_rel = relationship('Cluster', back_populates='departments')
-    
+
     services = relationship('Service', secondary=department_services, backref='departments')
     vehicles = relationship('Vehicle', back_populates='department', cascade="all, delete-orphan")
     members = relationship('Municipality', back_populates='department', cascade="all, delete-orphan")
+
 
 class Municipality(Base):
     __tablename__ = 'municipalities'
@@ -86,6 +94,7 @@ class Municipality(Base):
     name = Column(String(100), nullable=False)
     department_id = Column(Integer, ForeignKey('departments.id'))
     department = relationship('Department', back_populates='members')
+
 
 class Vehicle(Base):
     __tablename__ = 'vehicles'
@@ -98,6 +107,7 @@ class Vehicle(Base):
     department_id = Column(Integer, ForeignKey('departments.id'))
     department = relationship('Department', back_populates='vehicles')
 
+
 class SitLocation(Base):
     __tablename__ = 'sit_locations'
     id = Column(Integer, primary_key=True, index=True)
@@ -109,6 +119,7 @@ class SitLocation(Base):
     lon = Column(Float, nullable=True)
     sit_vehicles = relationship('SitVehicle', back_populates='sit_location', cascade="all, delete-orphan")
 
+
 class SitVehicle(Base):
     __tablename__ = 'sit_vehicles'
     id = Column(Integer, primary_key=True, index=True)
@@ -116,3 +127,14 @@ class SitVehicle(Base):
     fleet_nr = Column(String(50), nullable=True)
     sit_location_id = Column(Integer, ForeignKey('sit_locations.id'))
     sit_location = relationship('SitLocation', back_populates='sit_vehicles')
+
+
+class AuditLog(Base):
+    __tablename__ = 'audit_logs'
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(String(50), default=lambda: datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    username = Column(String(50), nullable=False)
+    action = Column(String(20), nullable=False)  # CREATE, UPDATE of DELETE
+    table_name = Column(String(50), nullable=False)
+    row_name = Column(String(100), nullable=False)
+    details = Column(Text, nullable=True)

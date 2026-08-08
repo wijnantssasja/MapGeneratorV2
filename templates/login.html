@@ -17,22 +17,22 @@
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h2>Rode Kruis Inloggen</h2>
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-        <form action="/login" method="POST">
-            <div class="form-group">
-                <label for="username">Gebruikersnaam:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Wachtwoord:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit">Inloggen</button>
-        </form>
-    </div>
+<div class="login-card">
+    <h2>Rode Kruis Inloggen</h2>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form action="/login" method="POST">
+        <div class="form-group">
+            <label for="username">Gebruikersnaam:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Wachtwoord:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Inloggen</button>
+    </form>
+</div>
 </body>
 </html>

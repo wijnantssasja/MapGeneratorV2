@@ -25,6 +25,12 @@ def get_db():
     finally:
         db.close()
 
+
+def log_action(db: Session, username: str, action: str, table_name: str, row_name: str, details: str = ""):
+    log = AuditLog(username=username, action=action, table_name=table_name, row_name=row_name, details=details)
+    db.add(log)
+
+
 # Helper: Get current logged-in user from session
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     username = request.session.get("username")
@@ -169,88 +175,6 @@ async def edit_department_page(request: Request, dept_id: int, db: Session = Dep
         name="edit_department.html",
         context={"user": current_user, "dept": dept}
     )
-@app.post("/departments/edit/{dept_id}")
-async def update_department(
-    request: Request,
-    dept_id: int,
-    db: Session = Depends(get_db)
-):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    dept = db.query(Department).filter(Department.id == dept_id).first()
-    if not dept:
-        raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
-        
-    # VEILIGHEIDSCHECK
-    verify_edit_permission(current_user, dept.province) # Check huidige provincie
-    if new_province != dept.province:
-        verify_edit_permission(current_user, new_province) # Check ook als ze de provincie zouden veranderen
-
-    # Haal alle formulier data op
-    form = await request.form()
-
-    # Update basisvelden
-    dept.name = form.get("name")
-    dept.province = form.get("province")
-    dept.group = form.get("group")
-    dept.address = form.get("address")
-    dept.email = form.get("email")
-    dept.telephone = form.get("telephone")
-    dept.entiteitnummer = form.get("entiteitnummer")
-    dept.color = form.get("color")
-    
-    # Coördinaten converteren naar float indien ingevuld
-    dept.lat = float(form.get("lat")) if form.get("lat") else None
-    dept.lon = float(form.get("lon")) if form.get("lon") else None
-    
-    # Checkboxes verwerken
-    dept.type = "provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling"
-    dept.transparent = True if form.get("transparent") else False
-
-    # --- ZIEKENWAGENS (VEHICLES) VERWERKEN ---
-    # We verwijderen eerst de oude voertuigen van deze afdeling
-    db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
-    
-    # Lees de arrays uit de HTML input velden (vehicle_name[], vehicle_fleet[], etc.)
-    v_names = form.getlist("vehicle_name[]")
-    v_fleets = form.getlist("vehicle_fleet[]")
-    v_addresses = form.getlist("vehicle_address[]")
-    v_lats = form.getlist("vehicle_lat[]")
-    v_lons = form.getlist("vehicle_lon[]")
-    
-    # Loop over de doorgegeven voertuigen en sla ze op
-    for i in range(len(v_names)):
-        if v_names[i].strip(): # Alleen toevoegen als er een naam is
-            new_vehicle = Vehicle(
-                name=v_names[i].strip(),
-                fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
-                address=v_addresses[i].strip() if v_addresses[i] else None,
-                lat=float(v_lats[i]) if v_lats[i] else None,
-                lon=float(v_lons[i]) if v_lons[i] else None,
-                department_id=dept.id
-            )
-            db.add(new_vehicle)
-    # --- SERVICES (DISCIPLINES) VERWERKEN ---
-    # Haal de lijst met aangevinkte services op
-    services_list = form.getlist("services[]")
-    
-    # Maak de huidige lijst leeg in de database relatie
-    dept.services.clear()
-    
-    for srv_name in services_list:
-        srv_name = srv_name.lower().strip()
-        if srv_name:
-            # Check of de service al bestaat in de globale services tabel
-            service = db.query(Service).filter(Service.name == srv_name).first()
-            if not service:
-                service = Service(name=srv_name)
-                db.add(service)
-                db.flush() # Genereer direct een ID
-            dept.services.append(service)
-    db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/sit-locations/edit/{sit_id}", response_class=HTMLResponse)
 async def edit_sit_page(request: Request, sit_id: int, db: Session = Depends(get_db)):
@@ -271,50 +195,6 @@ async def edit_sit_page(request: Request, sit_id: int, db: Session = Depends(get
         context={"user": current_user, "sit": sit}
     )
 
-@app.post("/sit-locations/edit/{sit_id}")
-async def update_sit(
-    request: Request,
-    sit_id: int,
-    db: Session = Depends(get_db)
-):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
-    if not sit:
-        raise HTTPException(status_code=404, detail="SIT niet gevonden")
-
-    verify_edit_permission(current_user, sit.province)
-    if new_province != sit.province:
-        verify_edit_permission(current_user, new_province)
-
-    form = await request.form()
-
-    sit.name = form.get("name")
-    sit.province = form.get("province") # Opslaan van de provincie
-    sit.type = form.get("type")
-    sit.address = form.get("address")
-    sit.lat = float(form.get("lat")) if form.get("lat") else None
-    sit.lon = float(form.get("lon")) if form.get("lon") else None
-    
-    # Voertuigen verwerken
-    db.query(SitVehicle).filter(SitVehicle.sit_location_id == sit.id).delete()
-    
-    v_names = form.getlist("vehicle_name[]")
-    v_fleets = form.getlist("vehicle_fleet[]")
-    
-    for i in range(len(v_names)):
-        if v_names[i].strip():
-            db.add(SitVehicle(
-                name=v_names[i].strip(),
-                fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
-                sit_location_id=sit.id
-            ))
-    
-    db.commit()
-    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
-
 from database import Region, Cluster, Municipality
 
 # --- AFDELINGEN TOEVOEGEN & VERWIDEREN ---
@@ -326,59 +206,6 @@ async def new_department_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(request=request, name="edit_department.html", context={"user": current_user, "dept": None})
 
-@app.post("/departments/new")
-async def create_department(request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    form = await request.form()
-    new_dept = Department(
-        name=form.get("name"),
-        province=form.get("province"),
-        group=form.get("group"),
-        address=form.get("address"),
-        email=form.get("email"),
-        telephone=form.get("telephone"),
-        entiteitnummer=form.get("entiteitnummer"),
-        color=form.get("color"),
-        type="provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling",
-        transparent=True if form.get("transparent") else False,
-        lat=float(form.get("lat")) if form.get("lat") else None,
-        lon=float(form.get("lon")) if form.get("lon") else None
-    )
-    db.add(new_dept)
-    db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/departments/delete/{dept_id}")
-async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    dept = db.query(Department).filter(Department.id == dept_id).first()
-    if dept:
-        verify_edit_permission(current_user, dept.province)
-        log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
-        db.delete(dept)
-        db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
-
-@app.post("/sit-locations/delete/{sit_id}")
-async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
-    if sit:
-        verify_edit_permission(current_user, sit.province)
-        log_action(db, current_user.username, "DELETE", "SIT-Locatie", sit.name, "SIT definitief verwijderd")
-        db.delete(sit)
-        db.commit()
-    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
-
 # --- SIT LOCATIES TOEVOEGEN & VERWIDEREN ---
 
 @app.get("/sit-locations/new", response_class=HTMLResponse)
@@ -388,92 +215,9 @@ async def new_sit_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(request=request, name="edit_sit.html", context={"user": current_user, "sit": None})
 
-@app.post("/sit-locations/new")
-async def create_sit(request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    form = await request.form()
-    new_sit = SitLocation(
-        name=form.get("name"),
-        province=form.get("province"),
-        type=form.get("type"),
-        address=form.get("address"),
-        lat=float(form.get("lat")) if form.get("lat") else None,
-        lon=float(form.get("lon")) if form.get("lon") else None
-    )
-    db.add(new_sit)
-    db.commit()
-    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
-
 
 # --- REGIO'S & CLUSTERS BEHEER ---
 
-
-@app.post("/regions/save")
-async def save_region(request: Request, db: Session = Depends(get_db)):
-    form = await request.form()
-    reg_id = form.get("region_id")
-    name = form.get("name")
-    province = form.get("province")
-    selected_depts = form.getlist("departments[]")
-
-    verify_edit_permission(current_user, province)
-    if reg_id:
-        existing_reg = db.query(Region).filter(Region.id == int(reg_id)).first()
-        if existing_reg:
-            verify_edit_permission(current_user, existing_reg.province)
-        region = db.query(Region).filter(Region.id == int(reg_id)).first()
-        region.name = name
-        region.province = province
-    else:
-        region = Region(name=name, province=province)
-        db.add(region)
-        db.flush()
-        
-    # Reset en koppel afdelingen
-    db.query(Department).filter(Department.region_id == region.id).update({"region_id": None})
-    if selected_depts:
-        db.query(Department).filter(Department.id.in_([int(d) for d in selected_depts])).update({"region_id": region.id}, synchronize_session=False)
-        
-    db.commit()
-    return RedirectResponse(url="/regions", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@app.post("/clusters/save")
-async def save_cluster(request: Request, db: Session = Depends(get_db)):
-    form = await request.form()
-    clus_id = form.get("cluster_id")
-    name = form.get("name")
-    province = form.get("province")
-    region_id = form.get("region_id")
-    selected_depts = form.getlist("departments[]")
-    
-    if clus_id:
-        cluster = db.query(Cluster).filter(Cluster.id == int(clus_id)).first()
-        cluster.name = name
-        cluster.province = province
-        cluster.region_id = int(region_id) if region_id else None
-    else:
-        cluster = Cluster(name=name, province=province, region_id=int(region_id) if region_id else None)
-        db.add(cluster)
-        db.flush()
-    
-
-
-    verify_edit_permission(current_user, province)
-    if clus_id:
-        existing_clus = db.query(Cluster).filter(Cluster.id == int(clus_id)).first()
-        if existing_clus:
-            verify_edit_permission(current_user, existing_clus.province)
-
-    db.query(Department).filter(Department.cluster_id == cluster.id).update({"cluster_id": None})
-    if selected_depts:
-        db.query(Department).filter(Department.id.in_([int(d) for d in selected_depts])).update({"cluster_id": cluster.id}, synchronize_session=False)
-        
-    db.commit()
-    return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
 
 # --- REGIO'S BEHEER (BEWERKEN & VERWIJDEREN) ---
 
@@ -495,20 +239,6 @@ async def edit_region_page(request: Request, reg_id: int, db: Session = Depends(
         name="regions.html", 
         context={"user": current_user, "regions": regions, "departments": departments, "edit_region": region}
     )
-
-@app.post("/regions/delete/{reg_id}")
-async def delete_region(reg_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    region = db.query(Region).filter(Region.id == reg_id).first()
-    if region:
-        verify_edit_permission(current_user, region.province)
-        db.delete(region)
-        db.commit()
-    return RedirectResponse(url="/regions", status_code=status.HTTP_303_SEE_OTHER)
-
 
 # --- CLUSTERS BEHEER (BEWERKEN & VERWIJDEREN) ---
 
@@ -532,23 +262,6 @@ async def edit_cluster_page(request: Request, clus_id: int, db: Session = Depend
         context={"user": current_user, "clusters": clusters, "regions": regions, "departments": departments, "edit_cluster": cluster}
     )
 
-@app.post("/clusters/delete/{clus_id}")
-async def delete_cluster(clus_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
-    cluster = db.query(Cluster).filter(Cluster.id == clus_id).first()
-    if cluster:
-        verify_edit_permission(current_user, region.province)
-        db.delete(cluster)
-        db.commit()
-    return RedirectResponse(url="/clusters", status_code=status.HTTP_303_SEE_OTHER)
-
-def log_action(db: Session, username: str, action: str, table_name: str, row_name: str, details: str = ""):
-    log = AuditLog(username=username, action=action, table_name=table_name, row_name=row_name, details=details)
-    db.add(log)
-
 
 @app.get("/departments/merge", response_class=HTMLResponse)
 async def merge_select_page(request: Request, db: Session = Depends(get_db)):
@@ -571,32 +284,274 @@ async def view_audit_logs(request: Request, db: Session = Depends(get_db)):
     logs = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(200).all()
     return templates.TemplateResponse(request=request, name="audit_logs.html", context={"user": current_user, "logs": logs})
 
-@app.post("/departments/merge", response_class=HTMLResponse)
-async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...), db: Session = Depends(get_db)):
+
+# =========================================================
+# HELPER: LOGBOEK
+# =========================================================
+def log_action(db: Session, username: str, action: str, table_name: str, row_name: str, details: str = ""):
+    try:
+        log = AuditLog(username=username, action=action, table_name=table_name, row_name=row_name, details=details)
+        db.add(log)
+    except Exception as e:
+        print(f"Kon log niet wegschrijven: {e}")
+
+
+# =========================================================
+# AFDELINGEN: BEWERKEN, TOEVOEGEN, FUSIE & VERWIJDEREN
+# =========================================================
+@app.post("/departments/new")
+async def create_department(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-        
+
+    form = await request.form()
+    province = form.get("province")
+    verify_edit_permission(current_user, province)
+
+    new_dept = Department(
+        name=form.get("name"), province=province, group=form.get("group"),
+        address=form.get("address"), email=form.get("email"), telephone=form.get("telephone"),
+        entiteitnummer=form.get("entiteitnummer"), color=form.get("color"),
+        type="provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling",
+        transparent=True if form.get("transparent") else False,
+        lat=float(form.get("lat")) if form.get("lat") else None,
+        lon=float(form.get("lon")) if form.get("lon") else None
+    )
+    db.add(new_dept)
+    db.flush()  # Genereer ID
+
+    # Leden (Deelgemeenten) opslaan
+    for m_name in form.getlist("members[]"):
+        if m_name.strip(): db.add(Municipality(name=m_name.strip(), department_id=new_dept.id))
+
+    # Voertuigen opslaan
+    v_names = form.getlist("vehicle_name[]")
+    v_fleets = form.getlist("vehicle_fleet[]")
+    v_addresses = form.getlist("vehicle_address[]")
+    v_lats = form.getlist("vehicle_lat[]")
+    v_lons = form.getlist("vehicle_lon[]")
+    for i in range(len(v_names)):
+        if v_names[i].strip():
+            db.add(Vehicle(
+                name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
+                address=v_addresses[i].strip() if v_addresses[i] else None,
+                lat=float(v_lats[i]) if v_lats[i] else None, lon=float(v_lons[i]) if v_lons[i] else None,
+                department_id=new_dept.id
+            ))
+
+    # Services (Disciplines) opslaan
+    for srv_name in form.getlist("services[]"):
+        srv_name = srv_name.lower().strip()
+        if srv_name:
+            service = db.query(Service).filter(Service.name == srv_name).first()
+            if not service:
+                service = Service(name=srv_name)
+                db.add(service)
+                db.flush()
+            new_dept.services.append(service)
+
+    log_action(db, current_user.username, "CREATE", "Afdeling", new_dept.name, "Nieuwe afdeling/fusie aangemaakt.")
+    db.commit()
+    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/departments/edit/{dept_id}")
+async def update_department(request: Request, dept_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if not dept: raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
+
+    form = await request.form()
+    new_province = form.get("province")
+
+    verify_edit_permission(current_user, dept.province)
+    if new_province and new_province != dept.province:
+        verify_edit_permission(current_user, new_province)
+
+    # Logging bijhouden (welke velden zijn aangepast?)
+    changes = []
+    if str(dept.name) != str(form.get("name")): changes.append("naam")
+    if str(dept.province) != str(form.get("province")): changes.append("provincie")
+    if str(dept.address) != str(form.get("address")): changes.append("adres")
+
+    dept.name = form.get("name")
+    dept.province = new_province
+    dept.group = form.get("group")
+    dept.address = form.get("address")
+    dept.email = form.get("email")
+    dept.telephone = form.get("telephone")
+    dept.entiteitnummer = form.get("entiteitnummer")
+    dept.color = form.get("color")
+    dept.lat = float(form.get("lat")) if form.get("lat") else None
+    dept.lon = float(form.get("lon")) if form.get("lon") else None
+    dept.type = "provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling"
+    dept.transparent = True if form.get("transparent") else False
+
+    # Leden (Deelgemeenten) updaten
+    db.query(Municipality).filter(Municipality.department_id == dept.id).delete()
+    for m_name in form.getlist("members[]"):
+        if m_name.strip(): db.add(Municipality(name=m_name.strip(), department_id=dept.id))
+
+    # Voertuigen updaten
+    db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
+    v_names = form.getlist("vehicle_name[]")
+    v_fleets = form.getlist("vehicle_fleet[]")
+    v_addresses = form.getlist("vehicle_address[]")
+    v_lats = form.getlist("vehicle_lat[]")
+    v_lons = form.getlist("vehicle_lon[]")
+    for i in range(len(v_names)):
+        if v_names[i].strip():
+            db.add(Vehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
+                           address=v_addresses[i].strip() if v_addresses[i] else None,
+                           lat=float(v_lats[i]) if v_lats[i] else None, lon=float(v_lons[i]) if v_lons[i] else None,
+                           department_id=dept.id))
+
+    # Services updaten
+    dept.services.clear()
+    for srv_name in form.getlist("services[]"):
+        srv_name = srv_name.lower().strip()
+        if srv_name:
+            service = db.query(Service).filter(Service.name == srv_name).first()
+            if not service:
+                service = Service(name=srv_name)
+                db.add(service)
+                db.flush()
+            dept.services.append(service)
+
+    log_action(db, current_user.username, "UPDATE", "Afdeling", dept.name,
+               f"Gewijzigd: {', '.join(changes) if changes else 'Subdata'}")
+    db.commit()
+    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/departments/delete/{dept_id}")
+async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if dept:
+        verify_edit_permission(current_user, dept.province)
+        log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling definitief verwijderd")
+        db.delete(dept)
+        db.commit()
+    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/departments/merge", response_class=HTMLResponse)
+async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...),
+                        db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
     dept_a = db.query(Department).get(dept_a_id)
     dept_b = db.query(Department).get(dept_b_id)
-    
-    # Maak een dummy object in het RAM geheugen voor de bewerk-pagina
+
+    # Maak VOLLEDIG LOSGEKOPPELDE (detached) kopieën voor de template. Dit voorkomt SQLAlchemy errors.
     merged_dept = Department(
-        name=f"{dept_a.name} - {dept_b.name}",
-        province=dept_a.province,
-        group=dept_a.group or dept_b.group,
-        address=dept_a.address,
-        email=dept_a.email,
-        telephone=dept_a.telephone,
-        color=dept_a.color,
-        type="afdeling",
-        lat=dept_a.lat,
-        lon=dept_a.lon
+        name=f"{dept_a.name} - {dept_b.name}", province=dept_a.province, group=dept_a.group or dept_b.group,
+        address=dept_a.address, email=dept_a.email, telephone=dept_a.telephone, color=dept_a.color,
+        type="afdeling", lat=dept_a.lat, lon=dept_a.lon
     )
-    
-    # Combineer leden, voertuigen en disciplines
-    merged_dept.members = dept_a.members + [m for m in dept_b.members if m not in dept_a.members]
-    merged_dept.vehicles = dept_a.vehicles + dept_b.vehicles
+
+    merged_dept.members = [Municipality(name=m.name) for m in dept_a.members]
+    existing_m = [m.name for m in dept_a.members]
+    for m in dept_b.members:
+        if m.name not in existing_m: merged_dept.members.append(Municipality(name=m.name))
+
+    merged_dept.vehicles = [Vehicle(name=v.name, fleet_nr=v.fleet_nr, address=v.address, lat=v.lat, lon=v.lon) for v in
+                            dept_a.vehicles + dept_b.vehicles]
     merged_dept.services = list(set(dept_a.services + dept_b.services))
-    
-    return templates.TemplateResponse(request=request, name="edit_department.html", context={"user": current_user, "dept": merged_dept})
+
+    # Render de edit template met deze dummy data (gebruiker moet nog handmatig op Opslaan klikken!)
+    return templates.TemplateResponse(request=request, name="edit_department.html",
+                                      context={"user": current_user, "dept": merged_dept})
+
+
+# =========================================================
+# SIT LOCATIES: BEWERKEN, TOEVOEGEN & VERWIJDEREN
+# =========================================================
+@app.post("/sit-locations/new")
+async def create_sit(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    form = await request.form()
+    province = form.get("province")
+    verify_edit_permission(current_user, province)
+
+    new_sit = SitLocation(
+        name=form.get("name"), province=province, type=form.get("type"), address=form.get("address"),
+        lat=float(form.get("lat")) if form.get("lat") else None, lon=float(form.get("lon")) if form.get("lon") else None
+    )
+    db.add(new_sit)
+    db.flush()
+
+    v_names = form.getlist("vehicle_name[]")
+    v_fleets = form.getlist("vehicle_fleet[]")
+    for i in range(len(v_names)):
+        if v_names[i].strip():
+            db.add(SitVehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
+                              sit_location_id=new_sit.id))
+
+    log_action(db, current_user.username, "CREATE", "SIT-Locatie", new_sit.name, "Nieuwe SIT aangemaakt.")
+    db.commit()
+    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/sit-locations/edit/{sit_id}")
+async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
+    if not sit: raise HTTPException(status_code=404, detail="SIT niet gevonden")
+
+    form = await request.form()
+    new_province = form.get("province")
+
+    verify_edit_permission(current_user, sit.province)
+    if new_province and new_province != sit.province:
+        verify_edit_permission(current_user, new_province)
+
+    changes = []
+    if str(sit.name) != str(form.get("name")): changes.append("naam")
+    if str(sit.province) != str(form.get("province")): changes.append("provincie")
+    if str(sit.type) != str(form.get("type")): changes.append("type")
+
+    sit.name = form.get("name")
+    sit.province = new_province
+    sit.type = form.get("type")
+    sit.address = form.get("address")
+    sit.lat = float(form.get("lat")) if form.get("lat") else None
+    sit.lon = float(form.get("lon")) if form.get("lon") else None
+
+    db.query(SitVehicle).filter(SitVehicle.sit_location_id == sit.id).delete()
+    v_names = form.getlist("vehicle_name[]")
+    v_fleets = form.getlist("vehicle_fleet[]")
+    for i in range(len(v_names)):
+        if v_names[i].strip():
+            db.add(SitVehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
+                              sit_location_id=sit.id))
+
+    log_action(db, current_user.username, "UPDATE", "SIT-Locatie", sit.name,
+               f"Gewijzigd: {', '.join(changes) if changes else 'Voertuigen'}")
+    db.commit()
+    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/sit-locations/delete/{sit_id}")
+async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
+    if sit:
+        verify_edit_permission(current_user, sit.province)
+        log_action(db, current_user.username, "DELETE", "SIT-Locatie", sit.name, "SIT definitief verwijderd")
+        db.delete(sit)
+        db.commit()
+    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)

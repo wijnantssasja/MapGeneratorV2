@@ -1,29 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Provinciale Zetels - Rode Kruis Map Generator{% endblock%}
-	{% block content%}
-	<h2>Provinciale Zetels</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Naam</th>
-                    <th>Provincie</th>
-                    <th>Adres</th>
-                    <th>Email</th>
-                    <th>Acties</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for zetel in zetels %}
-                <tr>
-                    <td><strong>{{ zetel.name }}</strong></td>
-                    <td>{{ zetel.province }}</td>
-                    <td>{{ zetel.address or '-' }}</td>
-                    <td>{{ zetel.email or '-' }}</td>
-                    <td>
-                        <a href="/departments/edit/{{ zetel.id }}" class="btn-edit">Bewerk</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+{% block content%}
+<h2>Provinciale Zetels</h2>
+<table>
+    <thead>
+    <tr>
+        <th>Naam</th>
+        <th>Provincie</th>
+        <th>Adres</th>
+        <th>Email</th>
+        <th>Acties</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for zetel in zetels %}
+    <tr>
+        <td><strong>{{ zetel.name }}</strong></td>
+        <td>{{ zetel.province }}</td>
+        <td>{{ zetel.address or '-' }}</td>
+        <td>{{ zetel.email or '-' }}</td>
+        <td>
+            <a href="/departments/edit/{{ zetel.id }}" class="btn-edit">Bewerk</a>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
 {% endblock %}
