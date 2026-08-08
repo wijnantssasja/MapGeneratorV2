@@ -32,7 +32,11 @@
         <td>{{ sit.type or '-' }}</td>
         <td>{{ sit.address or '-' }}</td>
         <td>
-            <a href="/sit-locations/edit/{{ sit.id }}" class="btn-edit">Bewerk</a>
+            <a href="/sit-locations/edit/{{ sit.id }}" class="btn-edit" {% if user.role not in ['admin', 'nationaal']
+            and sit.province != user.province_access %}style="background-color: #6c757d;"{% endif %}>
+            {% if user.role in ['admin', 'nationaal'] or sit.province == user.province_access %}Bewerk{% else %}Bekijk{%
+            endif %}
+            </a>
         </td>
     </tr>
     {% endfor %}

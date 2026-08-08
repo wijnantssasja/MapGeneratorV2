@@ -40,8 +40,10 @@
         <h1>Rode Kruis Kaart</h1>
         <div class="nav-links">
             <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-            <a href="/departments" class="{% if '/departments' in request.url.path %}active{% endif %}">Afdelingen</a>
-            <a href="/provinciale-zetels" class="{% if '/provinciale-zetels' in request.url.path %}active{% endif %}">Prov.
+            <a href="/departments"
+               class="{% if '/departments' in request.url.path and not is_zetel|default(false) %}active{% endif %}">Afdelingen</a>
+            <a href="/provinciale-zetels"
+               class="{% if '/provinciale-zetels' in request.url.path or is_zetel|default(false) %}active{% endif %}">Prov.
                 Zetels</a>
             <a href="/sit-locations" class="{% if '/sit-locations' in request.url.path %}active{% endif %}">SIT
                 Locaties</a>

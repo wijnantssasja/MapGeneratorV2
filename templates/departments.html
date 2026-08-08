@@ -44,8 +44,11 @@
             {% endif %}
         </td>
         <td>
-            <a href="/departments/edit/{{ dept.id }}" class="btn-edit">Bewerk</a>
-        </td>
+            <a href="/departments/edit/{{ dept.id }}" class="btn-edit" {% if user.role not in ['admin', 'nationaal'] and
+            dept.province != user.province_access %}style="background-color: #6c757d;"{% endif %}>
+            {% if user.role in ['admin', 'nationaal'] or dept.province == user.province_access %}Bewerk{% else
+            %}Bekijk{% endif %}
+            </a>        </td>
     </tr>
     {% endfor %}
     </tbody>

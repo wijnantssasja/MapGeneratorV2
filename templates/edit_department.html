@@ -1,209 +1,207 @@
 {% extends "base.html" %}
-{% block title %}Bewerk Afdeling - Rode Kruis Map Generator{% endblock %}
+{% block title %}{% if readonly %}Bekijk{% else %}Bewerk{% endif %} Afdeling - Rode Kruis Map Generator{% endblock %}
+
 {% block content %}
-<h2>Bewerk Afdeling: {{ dept.name }}</h2>
-<form action="{% if dept and dept.id %}/departments/edit/{{ dept.id }}{% else %}/departments/new{% endif %}"
-      method="POST">
-    <div class="checkbox-group">
-        <input type="checkbox" id="is_provinciale_zetel" name="is_provinciale_zetel" {% if (dept and dept.type==
-        'provinciale_zetel') or request.query_params.get('type') == 'zetel' %}checked{% endif %}>
-        <label for="is_provinciale_zetel" style="margin:0;">Dit is een Provinciale Zetel</label>
+{% set entity_name = 'Provinciale Zetel' if is_zetel|default(false) else 'Afdeling' %}
+<div class="content" style="max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+<h2>{% if readonly %}Details van{% elif dept and dept.id %}Bewerk{% else %}Nieuwe{% endif %} {{ entity_name }}: {{ dept.name if dept else '' }}</h2>
+    {% if readonly %}
+    <div style="background-color: #e3f2fd; color: #0d47a1; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+        <strong>Let op:</strong> Je hebt alleen leesrechten voor afdelingen buiten je eigen provincie.
     </div>
+    {% endif %}
 
-    <div class="checkbox-group">
-        <input type="checkbox" id="transparent" name="transparent" {% if dept.transparent %}checked{% endif %}>
-        <label for="transparent" style="margin:0;">Transparante weergave op de kaart</label>
-    </div>
+    <form action="{% if dept and dept.id %}/departments/edit/{{ dept.id }}{% else %}/departments/new{% endif %}" method="POST">
 
-    <div class="form-group">
-        <label for="name">Naam:</label>
-        <input type="text" id="name" name="name" value="{{ dept.name }}" required>
-    </div>
+        <div class="checkbox-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #eee;">
+            <input type="checkbox" id="is_provinciale_zetel" name="is_provinciale_zetel" style="width: 18px; height: 18px;" {% if (dept and dept.type == 'provinciale_zetel') or request.query_params.get('type') == 'zetel' %}checked{% endif %} {% if readonly %}disabled{% endif %}>
+            <label for="is_provinciale_zetel" style="margin:0;">Dit is een Provinciale Zetel</label>
+        </div>
 
-    <div style="display: flex; gap: 15px;">
-        <div class="form-group" style="flex: 1;">
-            <label for="province">Provincie:</label>
-            <select id="province" name="province"
-                    style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" required>
-                <option value="Antwerpen" {% if dept.province==
-                'Antwerpen' %}selected{% endif %}>Antwerpen</option>
-                <option value="Brussel" {% if dept.province==
-                'Brussel' %}selected{% endif %}>Brussel</option>
-                <option value="Limburg" {% if dept.province==
-                'Limburg' %}selected{% endif %}>Limburg</option>
-                <option value="Oost-Vlaanderen" {% if dept.province==
-                'Oost-Vlaanderen' %}selected{% endif %}>Oost-Vlaanderen</option>
-                <option value="Vlaams-Brabant" {% if dept.province==
-                'Vlaams-Brabant' %}selected{% endif %}>Vlaams-Brabant</option>
-                <option value="West-Vlaanderen" {% if dept.province==
-                'West-Vlaanderen' %}selected{% endif %}>West-Vlaanderen</option>
-            </select>
+        <div class="checkbox-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 4px; border: 1px solid #eee;">
+            <input type="checkbox" id="transparent" name="transparent" style="width: 18px; height: 18px;" {% if dept and dept.transparent %}checked{% endif %} {% if readonly %}disabled{% endif %}>
+            <label for="transparent" style="margin:0;">Transparante weergave op de kaart</label>
         </div>
-        <div class="form-group" style="flex: 1;">
-            <label for="group">Regio (Group):</label>
-            <input type="text" id="group" name="group" value="{{ dept.group or '' }}">
-        </div>
-        <div class="form-group" style="flex: 1;">
-            <label for="entiteitnummer">Entiteitnummer:</label>
-            <input type="text" id="entiteitnummer" name="entiteitnummer" value="{{ dept.entiteitnummer or '' }}">
-        </div>
-    </div>
 
-    <div class="form-group">
-        <label for="address">Adres:</label>
-        <input type="text" id="address" name="address" value="{{ dept.address or '' }}">
-    </div>
+        <div class="form-group">
+            <label for="name">Naam:</label>
+            <input type="text" id="name" name="name" value="{{ dept.name if dept else '' }}" required {% if readonly %}disabled{% endif %}>
+        </div>
 
-    <div style="display: flex; gap: 15px;">
-        <div class="form-group" style="flex: 1;">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" value="{{ dept.email or '' }}">
-        </div>
-        <div class="form-group" style="flex: 1;">
-            <label for="telephone">Telefoon:</label>
-            <input type="text" id="telephone" name="telephone" value="{{ dept.telephone or '' }}">
-        </div>
-    </div>
-
-    <div style="display: flex; gap: 15px;">
-        <div class="form-group" style="flex: 1;">
-            <label for="lat">Latitude (Basisgebouw):</label>
-            <input type="number" step="any" id="lat" name="lat" value="{{ dept.lat or '' }}">
-        </div>
-        <div class="form-group" style="flex: 1;">
-            <label for="lon">Longitude (Basisgebouw):</label>
-            <input type="number" step="any" id="lon" name="lon" value="{{ dept.lon or '' }}">
-        </div>
-        <div class="form-group" style="flex: 1;">
-            <label for="color">Hex Kleur (Voor Polygonen):</label>
-            <div style="display:flex; gap:5px;">
-                <input type="color" id="color_picker" value="{{ dept.color or '#ffffff' }}"
-                       onchange="document.getElementById('color').value = this.value" style="width:50px; padding:2px;">
-                <input type="text" id="color" name="color" value="{{ dept.color or '' }}" placeholder="#HEXCODE">
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="province">Provincie:</label>
+                <select id="province" name="province" required {% if readonly %}disabled{% endif %}>
+                    <option value="" {% if not dept or not dept.province %}selected{% endif %} disabled>Kies een provincie...</option>
+                    {% for prov in ['Antwerpen', 'Brussel', 'Limburg', 'Oost-Vlaanderen', 'Vlaams-Brabant', 'West-Vlaanderen'] %}
+                    <option value="{{ prov }}" {% if dept and dept.province == prov %}selected{% endif %}>{{ prov }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="group">Regio (Group):</label>
+                <input type="text" id="group" name="group" value="{{ dept.group if dept else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="entiteitnummer">Entiteitnummer:</label>
+                <input type="text" id="entiteitnummer" name="entiteitnummer" value="{{ dept.entiteitnummer if dept else '' }}" {% if readonly %}disabled{% endif %}>
             </div>
         </div>
-    </div>
 
-    <h3 class="section-title">Gekoppelde Members / Deelgemeenten</h3>
-    <div style="background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">
-        {% if dept and dept.members %}
-        <ul style="margin: 0; padding-left: 20px;">
-            {% for member in dept.members %}
-            <input type="hidden" name="members[]" value="{{ member.name }}">
-            <li>{{ member.name }}</li>
+        <div class="form-group">
+            <label for="address">Adres:</label>
+            <input type="text" id="address" name="address" value="{{ dept.address if dept else '' }}" {% if readonly %}disabled{% endif %}>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="{{ dept.email if dept else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="telephone">Telefoon:</label>
+                <input type="text" id="telephone" name="telephone" value="{{ dept.telephone if dept else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="lat">Latitude (Basisgebouw):</label>
+                <input type="number" step="any" id="lat" name="lat" value="{{ dept.lat if dept else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="lon">Longitude (Basisgebouw):</label>
+                <input type="number" step="any" id="lon" name="lon" value="{{ dept.lon if dept else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="color">Hex Kleur:</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="color" id="color_picker" value="{{ dept.color if dept and dept.color else '#ffffff' }}" onchange="document.getElementById('color').value = this.value" style="width:50px; padding:2px;" {% if readonly %}disabled{% endif %}>
+                    <input type="text" id="color" name="color" value="{{ dept.color if dept else '' }}" placeholder="#HEXCODE" {% if readonly %}disabled{% endif %}>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 30px;">Disciplines / Services</h3>
+        {% set current_services = [] %}
+        {% if dept and dept.services %}{% set current_services = dept.services | map(attribute='name') | list %}{% endif %}
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px;">
+            {% for s in ['jeugd', 'zorgbib', 'brugfiguren', 'internationaal', 'uitleendienst', 'hulpdienst', 'vorming', 'bloed'] %}
+            <div style="display: flex; align-items: center; gap: 5px; width: calc(25% - 15px); min-width: 120px;">
+                <input type="checkbox" id="srv_{{ s }}" name="services[]" value="{{ s }}" style="width: 16px; height: 16px;" {% if s in current_services %}checked{% endif %} {% if readonly %}disabled{% endif %}>
+                <label for="srv_{{ s }}" style="margin: 0; font-weight: normal; font-size: 14px;">{{ s | capitalize }}</label>
+            </div>
             {% endfor %}
-        </ul>
-        {% else %}
-        <p style="margin:0; color:#666; font-style:italic;">Geen specifieke deelgemeenten gekoppeld.</p>
-        {% endif %}
-    </div>
-
-    <h3 class="section-title">Disciplines / Services</h3>
-    {% set current_services = dept.services | map(attribute='name') | list %}
-    <div style="display: flex; flex-wrap: wrap; gap: 15px; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-        {% for s in ['jeugd', 'zorgbib', 'brugfiguren', 'internationaal', 'uitleendienst', 'hulpdienst', 'vorming',
-        'bloed'] %}
-        <div style="display: flex; align-items: center; gap: 5px; width: calc(25% - 15px); min-width: 120px;">
-            <input type="checkbox" id="srv_{{ s }}" name="services[]" value="{{ s }}" style="width: 16px; height: 16px;"
-                   {% if s in current_services %}checked{% endif %}>
-            <label for="srv_{{ s }}" style="margin: 0; font-weight: normal; font-size: 14px;">{{ s | capitalize
-                }}</label>
         </div>
-        {% endfor %}
-    </div>
 
-    <h3 class="section-title">Ziekenwagens / Voertuigen</h3>
-    <div id="vehicles_container">
-        {% for vehicle in dept.vehicles %}
-        <div class="vehicle-card">
-            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Verwijderen</button>
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group" style="flex: 2;">
-                    <label>Roepnaam:</label>
-                    <input type="text" name="vehicle_name[]" value="{{ vehicle.name }}" required>
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Vlootnummer:</label>
-                    <input type="text" name="vehicle_fleet[]" value="{{ vehicle.fleet_nr or '' }}">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Afwijkend Adres (Optioneel):</label>
-                <input type="text" name="vehicle_address[]" value="{{ vehicle.address or '' }}">
-            </div>
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Latitude (Optioneel):</label>
-                    <input type="number" step="any" name="vehicle_lat[]" value="{{ vehicle.lat or '' }}">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Longitude (Optioneel):</label>
-                    <input type="number" step="any" name="vehicle_lon[]" value="{{ vehicle.lon or '' }}">
-                </div>
-            </div>
+        <h3 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 5px;">Gekoppelde Members / Deelgemeenten</h3>
+        <div style="background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">
+            {% if dept and dept.members %}
+                <ul style="margin: 0; padding-left: 20px;">
+                {% for member in dept.members %}
+                    <input type="hidden" name="members[]" value="{{ member.name }}">
+                    <li>{{ member.name }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p style="margin:0; color:#666; font-style:italic;">Geen specifieke deelgemeenten gekoppeld.</p>
+            {% endif %}
         </div>
-        {% endfor %}
-    </div>
 
-    <button type="button" class="btn-add" onclick="addVehicleRow()">+ Voertuig Toevoegen</button>
+        <h3 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 5px;">Ziekenwagens / Voertuigen</h3>
+        <div id="vehicles_container">
+            {% if dept and dept.vehicles %}
+                {% for vehicle in dept.vehicles %}
+                <div class="vehicle-card" style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative;">
+                    {% if not readonly %}
+                    <button type="button" style="position: absolute; top: 15px; right: 15px; background: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="this.parentElement.remove()">Verwijderen</button>
+                    {% endif %}
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 2;">
+                            <label>Roepnaam:</label>
+                            <input type="text" name="vehicle_name[]" value="{{ vehicle.name }}" required {% if readonly %}disabled{% endif %}>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Vlootnummer:</label>
+                            <input type="text" name="vehicle_fleet[]" value="{{ vehicle.fleet_nr or '' }}" {% if readonly %}disabled{% endif %}>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Afwijkend Adres:</label>
+                        <input type="text" name="vehicle_address[]" value="{{ vehicle.address or '' }}" {% if readonly %}disabled{% endif %}>
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Latitude:</label>
+                            <input type="number" step="any" name="vehicle_lat[]" value="{{ vehicle.lat or '' }}" {% if readonly %}disabled{% endif %}>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Longitude:</label>
+                            <input type="number" step="any" name="vehicle_lon[]" value="{{ vehicle.lon or '' }}" {% if readonly %}disabled{% endif %}>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
 
-    <div class="actions">
-        {% if dept and dept.id %}
-        <button type="submit" form="deleteForm"
-                onclick="return confirm('Weet je zeker dat je deze afdeling wilt verwijderen?');"
-                style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; float: left;">
-            Verwijder Afdeling
-        </button>
+        {% if not readonly %}
+        <button type="button" style="background-color: #1976d2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick="addVehicleRow()">+ Voertuig Toevoegen</button>
         {% endif %}
-        <a href="/departments" class="btn-cancel">Annuleren</a>
-        <button type="submit" class="btn-submit">Opslaan</button>
-    </div>
-</form>
 
-{% if dept and dept.id %}
-<form id="deleteForm" action="/departments/delete/{{ dept.id }}" method="POST" style="display:none;"></form>
-{% endif %}
-<a href="/departments" class="btn-cancel">Annuleren</a>
-<button type="submit" class="btn-submit">Opslaan</button>
+        <!-- EXACT 1 ACTIE BLOK -->
+        <div class="actions" style="margin-top: 30px; text-align: right; border-top: 1px solid #ddd; padding-top: 20px;">
+            {% if readonly %}
+                <a href="javascript:history.back()" class="btn-cancel" style="background-color: #1976d2;">Terug naar overzicht</a>
+            {% else %}
+                {% if dept and dept.id %}
+<button type="button" form="deleteForm" onclick="if(confirm('Weet je zeker dat je deze {{ entity_name | lower }} wilt verwijderen?')) document.getElementById('deleteForm').submit();" style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; float: left;">Verwijder {{ entity_name }}</button>                {% endif %}
+                <a href="/departments" class="btn-cancel">Annuleren</a>
+                <button type="submit" class="btn-submit">Opslaan</button>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if dept and dept.id and not readonly %}
+    <form id="deleteForm" action="/departments/delete/{{ dept.id }}" method="POST" style="display:none;"></form>
+    {% endif %}
 </div>
-</form>
-</div>
-{% endblock %}
-{% block scripts%}
+
+{% if not readonly %}
 <script>
-    // Javascript om dynamisch nieuwe voertuigen toe te voegen
     function addVehicleRow() {
         const container = document.getElementById('vehicles_container');
         const card = document.createElement('div');
-        card.className = 'vehicle-card';
+        card.style.cssText = "background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative;";
         card.innerHTML = `
-            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Verwijderen</button>
+            <button type="button" style="position: absolute; top: 15px; right: 15px; background: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="this.parentElement.remove()">Verwijderen</button>
             <div style="display: flex; gap: 15px;">
                 <div class="form-group" style="flex: 2;">
                     <label>Roepnaam:</label>
-                    <input type="text" name="vehicle_name[]" value="" placeholder="Bijv. Ziekenwagen 1" required>
+                    <input type="text" name="vehicle_name[]" required>
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label>Vlootnummer:</label>
-                    <input type="text" name="vehicle_fleet[]" value="" placeholder="Bijv. V315">
+                    <input type="text" name="vehicle_fleet[]">
                 </div>
             </div>
             <div class="form-group">
                 <label>Afwijkend Adres (Optioneel):</label>
-                <input type="text" name="vehicle_address[]" value="" placeholder="Vul alleen in als dit afwijkt van de afdeling">
+                <input type="text" name="vehicle_address[]">
             </div>
             <div style="display: flex; gap: 15px;">
                 <div class="form-group" style="flex: 1;">
-                    <label>Latitude (Optioneel):</label>
-                    <input type="number" step="any" name="vehicle_lat[]" value="">
+                    <label>Latitude:</label>
+                    <input type="number" step="any" name="vehicle_lat[]">
                 </div>
                 <div class="form-group" style="flex: 1;">
-                    <label>Longitude (Optioneel):</label>
-                    <input type="number" step="any" name="vehicle_lon[]" value="">
+                    <label>Longitude:</label>
+                    <input type="number" step="any" name="vehicle_lon[]">
                 </div>
             </div>
         `;
         container.appendChild(card);
     }
 </script>
+{% endif %}
 {% endblock %}
