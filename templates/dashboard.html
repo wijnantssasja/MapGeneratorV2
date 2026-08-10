@@ -2,6 +2,25 @@
 {% block title %}Dashboard - Rode Kruis Map Generator{% endblock %}
 
 {% block content %}
-<h2>Dashboard Overzicht</h2>
-<p>Aantal geconfigureerde afdelingen in de database: <strong>{{ dept_count }}</strong></p>
+    <h2>Dashboard Overzicht</h2>
+    <p>Aantal geconfigureerde afdelingen in de database: <strong>{{ dept_count }}</strong></p>
+
+    {% if request.query_params.get('map_generated') %}
+    <div style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 4px; border: 1px solid #c3e6cb; margin-bottom: 20px;">
+        <strong>Succes!</strong> De nieuwe interactieve kaart is gegenereerd.
+        <a href="/static/RodeKruis_Kaart.html" target="_blank" style="font-weight: bold; color: #155724; text-decoration: underline;">Klik hier om hem te openen</a>.
+    </div>
+    {% endif %}
+
+    {% if user.role in ['admin', 'nationaal'] %}
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+        <h3>Kaart Genereren</h3>
+        <p>Klik op de onderstaande knop om alle actuele data uit de database om te zetten in een nieuwe interactieve standalone HTML kaart.</p>
+        <form action="/generate-map" method="POST">
+            <button type="submit" style="background-color: #d32f2f; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px;">
+                ⚙️ Genereer Nieuwe Kaart
+            </button>
+        </form>
+    </div>
+    {% endif %}
 {% endblock %}

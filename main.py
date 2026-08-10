@@ -7,7 +7,7 @@ import bcrypt
 from database import AuditLog, Municipality
 from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
 from types import SimpleNamespace
-
+import os
 # Create database tables if not exist
 Base.metadata.create_all(bind=engine)
 
@@ -842,3 +842,41 @@ async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db
         db.delete(sit)
         db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/generate-map")
+async def trigger_map_generation(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    if current_user.role not in ["admin", "nationaal"]:
+        raise HTTPException(status_code=403, detail="Alleen beheerders kunnen de hoofdkaart genereren.")
+
+    # Voorlopige paden bepalen
+    output_dir = "/opt/MapGenerator/static"
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, "RodeKruis_Kaart.html")
+
+    try:
+        # Hier roepen we straks jouw script aan:
+        # generate_master_map(db, output_file)
+
+        # Tijdelijke dummy file voor test
+        with open(output_file, "w") as f:
+            f.write("<h1>Kaart wordt gegenereerd...</h1><p>Dit is een tijdelijke test.</p>")
+
+        # Log de actie
+        log_action(db, current_user.username, "CREATE", "Kaart", "Master Map", "Nieuwe kaart gegenereerd")
+
+        # Redirect naar het dashboard met een success-parameter
+        return RedirectResponse(url="/?map_generated=true", status_code=status.HTTP_303_SEE_OTHER)
+    except Exception as e:
+        print(f"Fout bij genereren: {e}")
+        raise HTTPException(status_code=500, detail="Fout bij het genereren van de kaart.")
+
+
+# Route om de statische kaart daadwerkelijk te kunnen bekijken
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/static", StaticFiles(directory="/opt/MapGenerator/static"), name="static")
