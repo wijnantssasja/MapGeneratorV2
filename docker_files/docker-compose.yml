@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: kartoza/postgis:15-3.4
+    container_name: mapgen_db
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASS=secretpassword
+      - POSTGRES_DBNAME=rodekruis_mapgen
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: mapgen_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mapgen.be
+      PGADMIN_DEFAULT_PASSWORD: secretpassword
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  backend:
+    build: .
+    container_name: mapgen_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://admin:secretpassword@db:5432/rodekruis_mapgen
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./app:/app
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
