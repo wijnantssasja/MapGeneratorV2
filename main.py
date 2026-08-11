@@ -8,6 +8,11 @@ from database import AuditLog, Municipality
 from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
 from types import SimpleNamespace
 import os
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
+import json
+
 # Create database tables if not exist
 Base.metadata.create_all(bind=engine)
 
@@ -874,6 +879,73 @@ async def trigger_map_generation(request: Request, db: Session = Depends(get_db)
     except Exception as e:
         print(f"Fout bij genereren: {e}")
         raise HTTPException(status_code=500, detail="Fout bij het genereren van de kaart.")
+
+
+# --- Database Dependency ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# 1. Haal alle polygonen op als GeoJSON (Inclusief koppelings-status)
+@app.get("/api/departments/{department_id}/shapes")
+def get_shapes_for_edit_map(department_id: int, db: Session = Depends(get_db)):
+    # We halen alle shapes op, en gebruiken PostGIS (ST_AsGeoJSON) om de geometrie te vertalen
+    shapes = db.query(
+        DepartmentShape.shape_id,
+        DepartmentShape.name,
+        DepartmentShape.department_id,
+        func.ST_AsGeoJSON(DepartmentShape.geom).label('geometry')
+    ).all()
+
+    features = []
+    for shape in shapes:
+        # Bepaal de status voor de frontend kleuring
+        if shape.department_id == department_id:
+            status = "current"  # Hoort bij de afdeling die we nu bewerken
+        elif shape.department_id is not None:
+            status = "other"  # Hoort bij een ANDERE afdeling
+        else:
+            status = "empty"  # Is nog nergens aan gekoppeld
+
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "shape_id": shape.shape_id,
+                "name": shape.name,
+                "current_department_id": shape.department_id,
+                "status": status
+            },
+            "geometry": json.loads(shape.geometry)
+        })
+
+    return {"type": "FeatureCollection", "features": features}
+
+
+# 2. Toggle een polygoon (Koppelen of Ontkoppelen)
+@app.post("/api/departments/{department_id}/shapes/{shape_id}/toggle")
+def toggle_shape_assignment(department_id: int, shape_id: str, db: Session = Depends(get_db)):
+    shape = db.query(DepartmentShape).filter(DepartmentShape.shape_id == shape_id).first()
+
+    if not shape:
+        raise HTTPException(status_code=404, detail="Shape niet gevonden")
+
+    # Als hij al aan DEZE afdeling is gekoppeld -> Ontkoppelen (verwijderen)
+    if shape.department_id == department_id:
+        shape.department_id = None
+        shape.match_method = None
+        action = "unassigned"
+    # Als hij aan een andere, of geen afdeling is gekoppeld -> Koppelen aan DEZE afdeling
+    else:
+        shape.department_id = department_id
+        shape.match_method = MatchMethodEnum.MANUELE_OVERRIDE  # Omdat het via de UI is geklikt
+        action = "assigned"
+
+    db.commit()
+    return {"message": "Succes", "action": action, "shape_id": shape_id}
 
 
 # Route om de statische kaart daadwerkelijk te kunnen bekijken
