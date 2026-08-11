@@ -1,11 +1,15 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text, Enum
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from datetime import datetime
+import enum
+from geoalchemy2 import Geometry  # <-- Deze moet bovenaan staan!
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./mapgenerator.db"
+SQLALCHEMY_DATABASE_URL = "postgresql://admin:secretpassword@192.168.2.10:5432/rodekruis_mapgen"
+#SQLACLHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpassword@db:5432/rodekruis_mapgen")
+
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, echo=False
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -138,3 +142,25 @@ class AuditLog(Base):
     table_name = Column(String(50), nullable=False)
     row_name = Column(String(100), nullable=False)
     details = Column(Text, nullable=True)
+
+
+class MatchMethodEnum(enum.Enum):
+    NAAM_MATCH = "Naam_Match"
+    HOOFDGEMEENTE_MATCH = "Hoofdgemeente_Match"
+    RUIMTELIJKE_AFSTAND = "Ruimtelijke_Afstand_Dichtstbijzijnd"
+    MANUELE_OVERRIDE = "Manuele_Override"
+
+
+class DepartmentShape(Base):
+    __tablename__ = "department_shapes"
+    id = Column(Integer, primary_key=True, index=True)
+    shape_id = Column(String, index=True)
+    name = Column(String, index=True)
+    postcode = Column(String)
+    parent_id = Column(String)
+    hoofdgem = Column(String)
+
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    match_method = Column(Enum(MatchMethodEnum), nullable=True)
+
+    geom = Column(Geometry(geometry_type='MULTIPOLYGON', srid=4326))

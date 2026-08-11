@@ -2,6 +2,9 @@
 {% block title %}{% if readonly %}Bekijk{% else %}Bewerk{% endif %} Afdeling - Rode Kruis Map Generator{% endblock %}
 
 {% block content %}
+<!-- Leaflet CSS inladen -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 {% set entity_name = 'Provinciale Zetel' if is_zetel|default(false) else 'Afdeling' %}
 <div class="content" style="max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
 <h2>{% if readonly %}Details van{% elif dept and dept.id %}Bewerk{% else %}Nieuwe{% endif %} {{ entity_name }}: {{ dept.name if dept else '' }}</h2>
@@ -94,19 +97,40 @@
             {% endfor %}
         </div>
 
-        <h3 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 5px;">Gekoppelde Members / Deelgemeenten</h3>
-        <div style="background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">
-            {% if dept and dept.members %}
-                <ul style="margin: 0; padding-left: 20px;">
-                {% for member in dept.members %}
-                    <input type="hidden" name="members[]" value="{{ member.name }}">
-                    <li>{{ member.name }}</li>
-                {% endfor %}
-                </ul>
-            {% else %}
-                <p style="margin:0; color:#666; font-style:italic;">Geen specifieke deelgemeenten gekoppeld.</p>
-            {% endif %}
-        </div>
+        <!-- ========================================== -->
+        <!-- INTERACTIEVE WERKINGSGEBIEDEN KAART START  -->
+        <!-- ========================================== -->
+        <h3 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 30px;">Werkingsgebied (Gekoppelde Gemeenten)</h3>
+
+        {% if dept and dept.id %}
+            <div style="margin-bottom: 10px; font-size: 14px; color: #555;">
+                Klik op een gemeente om deze toe te voegen of te verwijderen.
+            </div>
+
+            <!-- Legende -->
+            <div style="display: flex; gap: 20px; font-size: 13px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(211, 47, 47, 0.6); border: 1px solid #b71c1c;"></div> Deze Afdeling
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(25, 118, 210, 0.4); border: 1px solid #0d47a1;"></div> Andere Afdeling
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(204, 204, 204, 0.3); border: 1px solid #999999;"></div> Vrij / Leeg
+                </div>
+            </div>
+
+            <!-- Kaart Container -->
+            <div id="editMap" style="height: 500px; width: 100%; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 20px;"></div>
+        {% else %}
+            <div style="background: #f8f9fa; padding: 15px; border: 1px dashed #ccc; border-radius: 4px; margin-bottom: 20px; text-align: center; color: #666;">
+                <p><em>De interactieve kaart wordt beschikbaar zodra je deze nieuwe afdeling voor de eerste keer opslaat.</em></p>
+            </div>
+        {% endif %}
+        <!-- ========================================== -->
+        <!-- INTERACTIEVE WERKINGSGEBIEDEN KAART EINDE  -->
+        <!-- ========================================== -->
+
 
         <h3 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 5px;">Ziekenwagens / Voertuigen</h3>
         <div id="vehicles_container">
@@ -149,15 +173,15 @@
         <button type="button" style="background-color: #1976d2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick="addVehicleRow()">+ Voertuig Toevoegen</button>
         {% endif %}
 
-        <!-- EXACT 1 ACTIE BLOK -->
         <div class="actions" style="margin-top: 30px; text-align: right; border-top: 1px solid #ddd; padding-top: 20px;">
             {% if readonly %}
-                <a href="javascript:history.back()" class="btn-cancel" style="background-color: #1976d2;">Terug naar overzicht</a>
+                <a href="javascript:history.back()" class="btn-cancel" style="background-color: #1976d2; padding: 10px 15px; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Terug naar overzicht</a>
             {% else %}
                 {% if dept and dept.id %}
-<button type="button" form="deleteForm" onclick="if(confirm('Weet je zeker dat je deze {{ entity_name | lower }} wilt verwijderen?')) document.getElementById('deleteForm').submit();" style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; float: left;">Verwijder {{ entity_name }}</button>                {% endif %}
-                <a href="/departments" class="btn-cancel">Annuleren</a>
-                <button type="submit" class="btn-submit">Opslaan</button>
+                    <button type="button" form="deleteForm" onclick="if(confirm('Weet je zeker dat je deze {{ entity_name | lower }} wilt verwijderen?')) document.getElementById('deleteForm').submit();" style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; float: left;">Verwijder {{ entity_name }}</button>
+                {% endif %}
+                <a href="/departments" class="btn-cancel" style="background-color: #777; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-right: 10px;">Annuleren</a>
+                <button type="submit" class="btn-submit" style="background-color: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">Opslaan</button>
             {% endif %}
         </div>
     </form>
@@ -167,8 +191,10 @@
     {% endif %}
 </div>
 
-{% if not readonly %}
+<!-- Leaflet JS & Map Logica inladen -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    {% if not readonly %}
     function addVehicleRow() {
         const container = document.getElementById('vehicles_container');
         const card = document.createElement('div');
@@ -202,6 +228,97 @@
         `;
         container.appendChild(card);
     }
+    {% endif %}
+
+    // LEAFLET MAP LOGICA
+    {% if dept and dept.id %}
+    document.addEventListener("DOMContentLoaded", function() {
+        const DEPARTMENT_ID = {{ dept.id }};
+        const IS_READONLY = {{ 'true' if readonly else 'false' }};
+
+        let map = L.map('editMap').setView([51.0, 4.5], 9);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let geojsonLayer;
+
+        function getStyle(feature) {
+            let status = feature.properties.status;
+            if (status === 'current') {
+                return { fillColor: '#d32f2f', color: '#b71c1c', weight: 2, fillOpacity: 0.6 };
+            } else if (status === 'other') {
+                return { fillColor: '#1976d2', color: '#0d47a1', weight: 1, fillOpacity: 0.4 };
+            } else {
+                return { fillColor: '#cccccc', color: '#999999', weight: 1, fillOpacity: 0.3 };
+            }
+        }
+
+        function onEachFeature(feature, layer) {
+            let tooltipText = `<b>${feature.properties.name}</b><br><small>Shape ID: ${feature.properties.shape_id}</small>`;
+            if (feature.properties.status === 'other') {
+                tooltipText += `<br><small style="color: #1976d2;">Al toegewezen (Afd. ID: ${feature.properties.current_department_id})</small>`;
+            }
+            layer.bindTooltip(tooltipText);
+
+            // Alleen luisteren naar kliks als de gebruiker schrijfrechten heeft
+            if (!IS_READONLY) {
+                layer.on('click', async function () {
+                    const shapeId = feature.properties.shape_id;
+
+                    try {
+                        const response = await fetch(`/api/departments/${DEPARTMENT_ID}/shapes/${shapeId}/toggle`, { method: 'POST' });
+
+                        if (response.ok) {
+                            const data = await response.json();
+
+                            if (data.action === "assigned") {
+                                feature.properties.status = 'current';
+                                feature.properties.current_department_id = DEPARTMENT_ID;
+                            } else {
+                                feature.properties.status = 'empty';
+                                feature.properties.current_department_id = null;
+                            }
+
+                            layer.setStyle(getStyle(feature));
+
+                            // Update de tooltip dynamisch
+                            let newTooltip = `<b>${feature.properties.name}</b><br><small>Shape ID: ${feature.properties.shape_id}</small>`;
+                            layer.getTooltip().setContent(newTooltip);
+                        } else {
+                            alert("Er ging iets mis bij het opslaan.");
+                        }
+                    } catch (error) {
+                        console.error("Fout tijdens togglen:", error);
+                    }
+                });
+            }
+        }
+
+        async function loadMapData() {
+            try {
+                const response = await fetch(`/api/departments/${DEPARTMENT_ID}/shapes`);
+                const data = await response.json();
+
+                geojsonLayer = L.geoJSON(data, {
+                    style: getStyle,
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+                // Zoom automatisch in op de polygonen die bij DEZE afdeling horen
+                const currentFeatures = data.features.filter(f => f.properties.status === 'current');
+                if (currentFeatures.length > 0) {
+                    const tempLayer = L.geoJSON(currentFeatures);
+                    map.fitBounds(tempLayer.getBounds(), { padding: [30, 30] });
+                }
+            } catch (error) {
+                console.error("Fout bij het laden van de kaartdata:", error);
+            }
+        }
+
+        loadMapData();
+    });
+    {% endif %}
 </script>
-{% endif %}
 {% endblock %}
