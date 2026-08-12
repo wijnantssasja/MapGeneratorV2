@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Gebruikersbeheer - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h2>Gebruikersbeheer</h2>
+    <a href="/users/new" style="background-color: #4CAF50; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+ Nieuwe Gebruiker</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Gebruikersnaam</th>
+            <th>Rol</th>
+            <th>Toegang (Provincie)</th>
+            <th>Acties</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in users %}
+        <tr>
+            <td><strong>{{ u.username }}</strong></td>
+            <td><span style="background: #eee; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">{{ u.role | upper }}</span></td>
+            <td>{{ u.province_access or 'All' }}</td>
+            <td>
+                <a href="/users/edit/{{ u.id }}" class="btn-edit">Bewerk</a>
+                {% if u.id != user.id %}
+                <form action="/users/delete/{{ u.id }}" method="POST" onsubmit="return confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?');" style="display:inline;">
+                    <button type="submit" style="background: #d32f2f; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verwijder</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

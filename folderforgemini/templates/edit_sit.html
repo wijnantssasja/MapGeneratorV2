@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{% if readonly %}Bekijk{% else %}Bewerk{% endif %} SIT - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<div class="content" style="max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+    <h2>{% if readonly %}Details van{% elif sit and sit.id %}Bewerk{% else %}Nieuwe{% endif %} SIT-Locatie: {{ sit.name if sit else '' }}</h2>
+
+    {% if readonly %}
+    <div style="background-color: #e3f2fd; color: #0d47a1; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+        <strong>Let op:</strong> Je hebt alleen leesrechten voor SIT-locaties buiten je eigen provincie.
+    </div>
+    {% endif %}
+
+    <form action="{% if sit and sit.id %}/sit-locations/edit/{{ sit.id }}{% else %}/sit-locations/new{% endif %}" method="POST">
+
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 2;">
+                <label for="name">Naam:</label>
+                <input type="text" id="name" name="name" value="{{ sit.name if sit else '' }}" required {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="province">Provincie:</label>
+                <select id="province" name="province" required {% if readonly %}disabled{% endif %}>
+                    <option value="" {% if not sit or not sit.province %}selected{% endif %} disabled>Kies een provincie...</option>
+                    {% for prov in ['Antwerpen', 'Brussel', 'Limburg', 'Oost-Vlaanderen', 'Vlaams-Brabant', 'West-Vlaanderen'] %}
+                    <option value="{{ prov }}" {% if sit and sit.province == prov %}selected{% endif %}>{{ prov }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="type">Type (bijv. Sit-Med, Sit-Log):</label>
+            <input type="text" id="type" name="type" value="{{ sit.type if sit else '' }}" {% if readonly %}disabled{% endif %}>
+        </div>
+
+        <div class="form-group">
+            <label for="address">Adres:</label>
+            <input type="text" id="address" name="address" value="{{ sit.address if sit else '' }}" {% if readonly %}disabled{% endif %}>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="lat">Latitude (Optioneel):</label>
+                <input type="number" step="any" id="lat" name="lat" value="{{ sit.lat if sit else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="lon">Longitude (Optioneel):</label>
+                <input type="number" step="any" id="lon" name="lon" value="{{ sit.lon if sit else '' }}" {% if readonly %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <h3 style="color:#d32f2f; margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px;">SIT Voertuigen</h3>
+        <div id="sit_vehicles_container">
+            {% if sit and sit.sit_vehicles %}
+                {% for vehicle in sit.sit_vehicles %}
+                <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative;">
+                    {% if not readonly %}
+                    <button type="button" style="position: absolute; top: 15px; right: 15px; background: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="this.parentElement.remove()">Verwijderen</button>
+                    {% endif %}
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 2;">
+                            <label>Voertuig Naam:</label>
+                            <input type="text" name="vehicle_name[]" value="{{ vehicle.name }}" required {% if readonly %}disabled{% endif %}>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Vlootnummer:</label>
+                            <input type="text" name="vehicle_fleet[]" value="{{ vehicle.fleet_nr or '' }}" {% if readonly %}disabled{% endif %}>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        {% if not readonly %}
+        <button type="button" onclick="addSitVehicleRow()" style="background-color: #1976d2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;">+ Voertuig Toevoegen</button>
+        {% endif %}
+
+        <!-- EXACT 1 ACTIE BLOK -->
+        <div class="actions" style="margin-top: 30px; text-align: right; border-top: 1px solid #ddd; padding-top: 20px;">
+            {% if readonly %}
+                <a href="javascript:history.back()" class="btn-cancel" style="background-color: #1976d2;">Terug naar overzicht</a>
+            {% else %}
+                {% if sit and sit.id %}
+                    <button type="button" form="deleteForm" onclick="if(confirm('Weet je zeker dat je deze SIT-locatie wilt verwijderen?')) document.getElementById('deleteForm').submit();" style="background-color: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; float: left;">Verwijderen</button>
+                {% endif %}
+                <a href="/sit-locations" class="btn-cancel">Annuleren</a>
+                <button type="submit" class="btn-submit">Opslaan</button>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if sit and sit.id and not readonly %}
+    <form id="deleteForm" action="/sit-locations/delete/{{ sit.id }}" method="POST" style="display:none;"></form>
+    {% endif %}
+</div>
+
+{% if not readonly %}
+<script>
+    function addSitVehicleRow() {
+        const container = document.getElementById('sit_vehicles_container');
+        const card = document.createElement('div');
+        card.style.cssText = "background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 10px; position: relative;";
+        card.innerHTML = `
+            <button type="button" style="position: absolute; top: 15px; right: 15px; background: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="this.parentElement.remove()">Verwijderen</button>
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 2;">
+                    <label>Voertuig Naam:</label>
+                    <input type="text" name="vehicle_name[]" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Vlootnummer:</label>
+                    <input type="text" name="vehicle_fleet[]">
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    }
+</script>
+{% endif %}
+{% endblock %}

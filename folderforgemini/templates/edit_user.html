@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Gebruiker Beheren - Rode Kruis Map Generator{% endblock %}
+{% block content_style %}style="max-width: 600px; margin: 0 auto;"{% endblock %}
+
+{% block content %}
+<h2>{{ 'Bewerk Gebruiker: ' + edit_user.username if edit_user else 'Nieuwe Gebruiker' }}</h2>
+
+<form action="{% if edit_user %}/users/edit/{{ edit_user.id }}{% else %}/users/new{% endif %}" method="POST">
+    <div class="form-group">
+        <label for="username">Gebruikersnaam:</label>
+        <input type="text" id="username" name="username" value="{{ edit_user.username if edit_user else '' }}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="password">Wachtwoord {% if edit_user %}(Laat leeg om ongewijzigd te laten){% endif %}:</label>
+        <input type="password" id="password" name="password" {% if not edit_user %}required{% endif %}>
+    </div>
+
+    <div class="form-group">
+        <label for="role">Rol:</label>
+        <select id="role" name="role" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="provinciaal" {% if edit_user and edit_user.role == 'provinciaal' %}selected{% endif %}>Provinciaal (Beperkt tot eigen provincie)</option>
+            <option value="nationaal" {% if edit_user and edit_user.role == 'nationaal' %}selected{% endif %}>Nationaal (Lezen/schrijven alle provincies)</option>
+            <option value="admin" {% if edit_user and edit_user.role == 'admin' %}selected{% endif %}>Admin (Volledige toegang + gebruikersbeheer)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="province_access">Toegewezen Provincie (Voor provinciale rol):</label>
+        <select id="province_access" name="province_access" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="All" {% if edit_user and edit_user.province_access == 'All' %}selected{% endif %}>Alle Provincies (Admin / Nationaal)</option>
+            {% for prov in ['Antwerpen', 'Brussel', 'Limburg', 'Oost-Vlaanderen', 'Vlaams-Brabant', 'West-Vlaanderen'] %}
+            <option value="{{ prov }}" {% if edit_user and edit_user.province_access == prov %}selected{% endif %}>{{ prov }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="actions">
+        <a href="/users" class="btn-cancel">Annuleren</a>
+        <button type="submit" class="btn-submit">Opslaan</button>
+    </div>
+</form>
+{% endblock %}

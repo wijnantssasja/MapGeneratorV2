@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Clusters Beheer - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<h2>Clusters Beheren</h2>
+
+<div style="display: flex; gap: 30px; margin-top: 20px;">
+    <!-- Formulier om Cluster toe te voegen of te bewerken -->
+    <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 6px; border: 1px solid #ddd;">
+        <h3>{{ 'Cluster Bewerken: ' + edit_cluster.name if edit_cluster else 'Cluster Toevoegen' }}</h3>
+        <form action="/clusters/save" method="POST">
+            {% if edit_cluster %}
+            <input type="hidden" name="cluster_id" value="{{ edit_cluster.id }}">
+            {% endif %}
+
+            <div class="form-group">
+                <label for="name">Naam Cluster:</label>
+                <input type="text" id="name" name="name" value="{{ edit_cluster.name if edit_cluster else '' }}"
+                       required placeholder="Bijv. Leuven">
+            </div>
+
+            <div class="form-group">
+                <label for="province">Provincie:</label>
+                <select id="province_select" name="province"
+                        style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" required
+                        onchange="filterForm()">
+                    {% for prov in ['Antwerpen', 'Brussel', 'Limburg', 'Oost-Vlaanderen', 'Vlaams-Brabant',
+                    'West-Vlaanderen'] %}
+                    <option value="{{ prov }}" {% if (edit_cluster and edit_cluster.province== prov) or (not
+                            edit_cluster and prov==
+                    'Vlaams-Brabant') %}selected{% endif %}>{{ prov }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="region_id">Bovenliggende Regio:</label>
+                <select id="region_id" name="region_id"
+                        style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="">-- Geen Regio --</option>
+                    {% for reg in regions %}
+                    <option value="{{ reg.id }}" data-province="{{ reg.province }}" {% if edit_cluster and
+                            edit_cluster.region_id== reg.id %}selected{% endif %}>{{ reg.name }} ({{ reg.province }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Koppel Afdelingen:</label>
+                <div style="max-height: 250px; overflow-y: auto; background: white; border: 1px solid #ccc; padding: 10px; border-radius: 4px;">
+                    {% for dept in departments %}
+                    {% if dept.type != 'provinciale_zetel' and (not dept.cluster_id or (edit_cluster and dept.cluster_id
+                    == edit_cluster.id)) %}
+                    <div class="dept-checkbox-item" data-province="{{ dept.province }}" style="margin-bottom: 5px;">
+                        <input type="checkbox" id="clus_dept_{{ dept.id }}" name="departments[]" value="{{ dept.id }}"
+                               {% if edit_cluster and dept in edit_cluster.departments %}checked{% endif %}>
+                        <label for="clus_dept_{{ dept.id }}" style="display:inline; font-weight:normal;">{{ dept.name }}
+                            ({{ dept.province }})</label>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="actions" style="text-align: left; border: none; padding: 0; display: flex; gap: 10px;">
+                <button type="submit" class="btn-submit">Cluster Opslaan</button>
+                {% if edit_cluster %}
+                <a href="/clusters"
+                   style="background: #6c757d; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">Annuleren</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Overzicht van bestaande Clusters -->
+    <div style="flex: 2;">
+        <h3>Bestaande Clusters</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Naam</th>
+                <th>Provincie</th>
+                <th>Regio</th>
+                <th>Afdelingen</th>
+                <th>Acties</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for clus in clusters %}
+            <tr>
+                <td><strong>{{ clus.name }}</strong></td>
+                <td>{{ clus.province }}</td>
+                <td>{{ clus.region.name if clus.region else '-' }}</td>
+                <td>
+                    {% for d in clus.departments %}
+                    <span style="background:#eee; padding:2px 5px; border-radius:3px; display:inline-block; margin:2px; font-size:11px;">{{ d.name }}</span>
+                    {% else %}
+                    <span style="color: #888; font-style: italic;">Geen</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <a href="/clusters/edit/{{ clus.id }}" class="btn-edit">Bewerk</a>
+                    <form action="/clusters/delete/{{ clus.id }}" method="POST"
+                          onsubmit="return confirm('Weet je zeker dat je deze cluster wilt verwijderen?');"
+                          style="display:inline;">
+                        <button type="submit"
+                                style="background: #d32f2f; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            Verwijder
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: #888;">Geen clusters gevonden.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function filterForm() {
+        let selectedProv = document.getElementById("province_select").value;
+
+        // 1. Filter regio's dropdown
+        let regSelect = document.getElementById("region_id");
+        let options = regSelect.options;
+
+        for (let i = 0; i < options.length; i++) {
+            let opt = options[i];
+            let optProv = opt.getAttribute("data-province");
+            if (opt.value === "") {
+                opt.style.display = "block";
+            } else if (optProv === selectedProv) {
+                opt.style.display = "block";
+            } else {
+                opt.style.display = "none";
+            }
+        }
+        if (regSelect.selectedOptions[0] && regSelect.selectedOptions[0].style.display === "none") {
+            regSelect.value = "";
+        }
+
+        // 2. Filter afdelingen checkboxes
+        let deptItems = document.querySelectorAll(".dept-checkbox-item");
+        deptItems.forEach(item => {
+            let itemProv = item.getAttribute("data-province");
+            if (itemProv === selectedProv) {
+                item.style.display = "block";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    }
+
+    window.onload = function() {
+        filterForm();
+    };
+</script>
+{% endblock %}

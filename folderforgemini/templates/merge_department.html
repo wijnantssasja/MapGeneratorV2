@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Afdelingen Samenvoegen - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<h2>Afdelingen Samenvoegen (Fusie)</h2>
+<div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 600px;">
+    <p>Selecteer twee afdelingen om samen te voegen. De data van beide afdelingen (voertuigen, deelgemeenten,
+        disciplines) zal gecombineerd worden in een nieuw concept.</p>
+    <form action="/departments/merge" method="POST">
+        <div class="form-group">
+            <label>Afdeling A:</label>
+            <select name="dept_a_id" required style="width: 100%; padding: 10px;">
+                <option value="" disabled selected>Kies eerste afdeling...</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}">{{ d.name }} ({{ d.province }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-top: 15px;">
+            <label>Afdeling B:</label>
+            <select name="dept_b_id" required style="width: 100%; padding: 10px;">
+                <option value="" disabled selected>Kies tweede afdeling...</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}">{{ d.name }} ({{ d.province }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn-submit" style="width: 100%;">Start Fusie & Bekijk Concept</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

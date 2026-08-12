@@ -1,19 +1,9 @@
 from database import SessionLocal, User
 import bcrypt
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text, Enum
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship
-
-SQLALCHEMY_DATABASE_URL = "postgresql://admin:secretpassword@192.168.2.10:5432/rodekruis_mapgen"
-
-# Let op: GEEN connect_args={"check_same_thread": False} meer hier!
-engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def create_admin():
     db = SessionLocal()
-
+    
     # Check if the user already exists
     if db.query(User).filter(User.username == "admin").first():
         print("Fout: Gebruiker 'admin' bestaat al!")
@@ -24,23 +14,22 @@ def create_admin():
     raw_password = "Welkom123!"
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(raw_password.encode('utf-8'), salt).decode('utf-8')
-
+    
     # Create the user model
     admin_user = User(
         username="admin",
         password_hash=hashed_password,
-        role="admin",  # Master role
-        province_access="All"  # Access to everything
+        role="admin",             # Master role
+        province_access="All"     # Access to everything
     )
-
+    
     db.add(admin_user)
     db.commit()
     db.close()
-
+    
     print("Succes: Admin gebruiker aangemaakt!")
     print("-> Gebruikersnaam: admin")
     print("-> Wachtwoord: Welkom123!")
-
 
 if __name__ == "__main__":
     create_admin()

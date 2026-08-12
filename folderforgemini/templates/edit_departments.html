@@ -4,7 +4,6 @@
 {% block content %}
 <!-- Leaflet CSS inladen -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
 {% set entity_name = 'Provinciale Zetel' if is_zetel|default(false) else 'Afdeling' %}
 <div class="content" style="max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -318,52 +317,7 @@
             }
         }
 
-        // ==========================================
-        // PINNETJES INLADEN (Hoofdlocatie & Voertuigen)
-        // ==========================================
-        async function loadMarkers() {
-            try {
-                const response = await fetch(`/api/departments/${DEPARTMENT_ID}/markers`);
-                const data = await response.json();
-
-                data.markers.forEach(marker => {
-                    let color = marker.type === 'main' ? '#d32f2f' : '#1976d2';
-                    let iconClass = marker.type === 'main' ? 'fa-star' : 'fa-ambulance';
-                    let title = marker.type === 'main' ? 'Hoofdlocatie' : 'Ziekenwagen';
-
-                    let customIcon = L.divIcon({
-                        className: 'custom-pin',
-                        html: `<div style='position: relative; width: 30px; height: 42px; text-align: center; margin-left: -15px; margin-top: -42px;'>
-                                   <i class='fa fa-map-marker' style='font-size: 42px; color: ${color}; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);'></i>
-                                   <i class='fa ${iconClass}' style='font-size: 16px; color: white; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);'></i>
-                               </div>`,
-                        iconSize: [30, 42],
-                        iconAnchor: [15, 42]
-                    });
-
-                    let popupHtml = `
-                        <div style='font-family: sans-serif; min-width: 200px;'>
-                            <h4 style='margin: 0 0 5px 0; color: ${color}; border-bottom: 1px solid ${color}; padding-bottom: 5px;'>
-                                ${title}: ${marker.name}
-                            </h4>
-                            <div style='font-size: 13px;'>
-                                <b>Adres:</b> ${marker.address}<br>
-                                ${marker.type === 'vehicle' && marker.fleet_nr ? `<b>Vlootnr:</b> ${marker.fleet_nr}` : ''}
-                            </div>
-                        </div>
-                    `;
-
-                    L.marker([marker.lat, marker.lon], { icon: customIcon })
-                        .addTo(map)
-                        .bindPopup(popupHtml);
-                });
-            } catch (error) {
-                console.error("Fout bij ophalen markers:", error);
-            }
-        }
-
         loadMapData();
-        loadMarkers(); // Start het ophalen van de markers
     });
     {% endif %}
 </script>

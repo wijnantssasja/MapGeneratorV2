@@ -1,21 +1,9 @@
 import yaml
-from database import (
-    SessionLocal, Department, Service, Municipality, Vehicle,
-    SitLocation, SitVehicle, Region, Cluster, DepartmentShape, department_services
-)
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text, Enum
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship
-SQLALCHEMY_DATABASE_URL = "postgresql://admin:secretpassword@192.168.2.10:5432/rodekruis_mapgen"
-
-# Let op: GEEN connect_args={"check_same_thread": False} meer hier!
-engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+from database import SessionLocal, Department, Service, Municipality, Vehicle, SitLocation, SitVehicle, Region, Cluster
 
 def import_data():
     db = SessionLocal()
-
+    
     print("Lezen van config_ALL_gesorteerd.yaml...")
     try:
         with open("/opt/MapGenerator/config_ALL_gesorteerd.yaml", "r", encoding="utf-8") as f:
@@ -25,29 +13,21 @@ def import_data():
         return
 
     print("Database wordt leeggemaakt voor een schone import...")
-
-    # 1. PostgreSQL veilige verwijder-volgorde (Child tabellen eerst!)
-    db.execute(department_services.delete())  # Koppel-tabel services leegmaken
-    db.query(DepartmentShape).update(
-        {"department_id": None, "match_method": None})  # Shapes ontkoppelen, NIET verwijderen
-
     db.query(Municipality).delete()
     db.query(Vehicle).delete()
     db.query(SitVehicle).delete()
     db.query(SitLocation).delete()
-
-    # 2. Nu pas de Department en daarna pas de parent tabellen (Cluster/Region)
-    db.query(Department).delete()
     db.query(Cluster).delete()
     db.query(Region).delete()
+    db.query(Department).delete()
     db.commit()
 
     departments_data = config.get("departments", {})
-
-    # 3. Eerst Regio's verzamelen op basis van 'group' en 'province' in afdelingen
+    
+    # 1. Eerst Regio's verzamelen op basis van 'group' en 'province' in afdelingen
     print("Regio's analyseren en importeren...")
-    regions_map = {}  # Key: (province, region_name) -> Region object
-
+    regions_map = {} # Key: (province, region_name) -> Region object
+    
     for dept_name, dept_info in departments_data.items():
         province = dept_info.get("province")
         group_name = dept_info.get("group")
@@ -59,13 +39,13 @@ def import_data():
                 db.flush()
                 regions_map[key] = reg
 
-    # 4. Afdelingen importeren en koppelen aan regio's
+    # 2. Afdelingen importeren en koppelen aan regio's
     print("Afdelingen importeren...")
     dept_objects = {}
     for dept_name, dept_info in departments_data.items():
         province = dept_info.get("province", "Onbekend")
         group_name = dept_info.get("group")
-
+        
         region_id = None
         if province and group_name:
             reg_obj = regions_map.get((province, group_name.strip()))
@@ -87,10 +67,7 @@ def import_data():
             lon=dept_info.get("lon"),
             region_id=region_id
         )
-
-        db.add(dept)
-        db.flush()
-
+        
         # Services
         for srv_name in dept_info.get("services", []):
             srv_name = srv_name.lower().strip()
@@ -114,17 +91,19 @@ def import_data():
                 lat=zw.get("lat"),
                 lon=zw.get("lon")
             ))
-
+            
+        db.add(dept)
+        db.flush()
         dept_objects[dept_name.lower()] = dept
 
-    # 5. Clusters importeren uit de top-level 'clusters' sectie
+    # 3. Clusters importeren uit de top-level 'clusters' sectie[cite: 1]
     print("Clusters importeren...")
     clusters_data = config.get("clusters", {})
     for cluster_name, member_muns in clusters_data.items():
         # Bepaal de provincie op basis van de eerste afdeling die deze gemeentes bevat
-        provincie = "Vlaams-Brabant"  # Default fallback
+        provincie = "Vlaams-Brabant" # Default fallback
         matched_region_id = None
-
+        
         # Zoek welke provincie bij deze cluster hoort via de afdelingen die deze members bevatten
         for mun in member_muns:
             for d_name, d_info in departments_data.items():
@@ -152,13 +131,13 @@ def import_data():
             if mun_lower in dept_objects:
                 dept_objects[mun_lower].cluster_id = cluster_obj.id
 
-    # 6. SIT-locaties importeren
+    # 4. SIT-locaties importeren
     print("SIT-Locaties importeren...")
     sit_locations_data = config.get("sit_locations", [])
     for sit_data in sit_locations_data:
         sit = SitLocation(
             name=sit_data.get("name"),
-            province=sit_data.get("province", "Vlaams-Brabant"),  # Fallback indien niet gespecificeerd
+            province=sit_data.get("province", "Vlaams-Brabant"), # Fallback indien niet gespecificeerd
             type=sit_data.get("type"),
             address=sit_data.get("address"),
             lat=sit_data.get("lat"),
@@ -174,7 +153,6 @@ def import_data():
     db.commit()
     db.close()
     print("Import van afdelingen, regio's en clusters succesvol afgerond!")
-
 
 if __name__ == "__main__":
     import_data()

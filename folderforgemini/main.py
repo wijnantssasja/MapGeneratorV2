@@ -8,12 +8,7 @@ from database import AuditLog, Municipality
 from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
 from types import SimpleNamespace
 import os
-import json
-from sqlalchemy import func
 from database import DepartmentShape, MatchMethodEnum  # <-- Voeg deze regel toe!
-from sqlalchemy import text
-from geopy.geocoders import Nominatim
-import time
 
 # Create database tables if not exist
 Base.metadata.create_all(bind=engine)
@@ -24,11 +19,6 @@ app = FastAPI(title="Rode Kruis Map Generator")
 app.add_middleware(SessionMiddleware, secret_key="rk-map-generator-super-secret-key-change-me")
 
 templates = Jinja2Templates(directory="templates")
-
-# Route om de statische kaart daadwerkelijk te kunnen bekijken
-from fastapi.staticfiles import StaticFiles
-
-app.mount("/static", StaticFiles(directory="/opt/MapGenerator/static"), name="static")
 
 
 def verify_edit_permission(user: User, target_province: str):
@@ -91,41 +81,15 @@ def check_post_permission(user: User, target_province: str):
         )
 
 
-# =========================================================
-# ADRES RESOLUTIE LOGICA
-# =========================================================
-geolocator = Nominatim(user_agent="rk_map_generator_backend", timeout=10)
-
-
-def resolve_address(address_str):
-    """Zoekt een adres op via API met verplichte delay en ', België' toevoeging."""
-    if not address_str or not address_str.strip():
-        return None, None
-    full_address = f"{address_str.strip()}, België"
-    try:
-        time.sleep(1.1)  # Strikte rate-limiting voor de gratis API
-        location = geolocator.geocode(full_address)
-        if location:
-            return location.latitude, location.longitude
-    except Exception as e:
-        print(f"Geocode Fout bij '{full_address}': {e}")
-    return None, None
-
-
 # ---------------------------------------------------------
 # AUTHENTICATION ROUTES
 # ---------------------------------------------------------
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, db: Session = Depends(get_db)):
-    # Controleer of de gebruiker écht bestaat in de huidige database
-    current_user = get_current_user(request, db)
-    if current_user:
+async def login_page(request: Request):
+    # If already logged in, redirect to dashboard
+    if request.session.get("username"):
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-    # Als de database de gebruiker niet kent, gooi de oude cookie weg
-    request.session.clear()
-
     return templates.TemplateResponse(request=request, name="login.html", context={"error": None})
 
 
@@ -302,25 +266,23 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
     province = form.get("province")
     verify_edit_permission(current_user, province)
 
-    # 1. Bepaal Coördinaten Afdeling
-    dept_lat = float(form.get("lat")) if form.get("lat") else None
-    dept_lon = float(form.get("lon")) if form.get("lon") else None
-
-    if dept_lat is None and dept_lon is None and form.get("address"):
-        dept_lat, dept_lon = resolve_address(form.get("address"))
-
     new_dept = Department(
         name=form.get("name"), province=province, group=form.get("group"),
         address=form.get("address"), email=form.get("email"), telephone=form.get("telephone"),
         entiteitnummer=form.get("entiteitnummer"), color=form.get("color"),
         type="provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling",
         transparent=True if form.get("transparent") else False,
-        lat=dept_lat, lon=dept_lon
+        lat=float(form.get("lat")) if form.get("lat") else None,
+        lon=float(form.get("lon")) if form.get("lon") else None
     )
     db.add(new_dept)
-    db.flush()
+    db.flush()  # Genereer ID
 
-    # 2. Bepaal Coördinaten Voertuigen
+    # Leden (Deelgemeenten) opslaan
+    for m_name in form.getlist("members[]"):
+        if m_name.strip(): db.add(Municipality(name=m_name.strip(), department_id=new_dept.id))
+
+    # Voertuigen opslaan
     v_names = form.getlist("vehicle_name[]")
     v_fleets = form.getlist("vehicle_fleet[]")
     v_addresses = form.getlist("vehicle_address[]")
@@ -328,21 +290,14 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
     v_lons = form.getlist("vehicle_lon[]")
     for i in range(len(v_names)):
         if v_names[i].strip():
-            v_lat = float(v_lats[i]) if v_lats[i] else None
-            v_lon = float(v_lons[i]) if v_lons[i] else None
-
-            if v_lat is None and v_lon is None:
-                if v_addresses[i] and v_addresses[i].strip():
-                    v_lat, v_lon = resolve_address(v_addresses[i])
-                else:
-                    v_lat, v_lon = dept_lat, dept_lon  # Fallback naar afdeling
-
             db.add(Vehicle(
                 name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
                 address=v_addresses[i].strip() if v_addresses[i] else None,
-                lat=v_lat, lon=v_lon, department_id=new_dept.id
+                lat=float(v_lats[i]) if v_lats[i] else None, lon=float(v_lons[i]) if v_lons[i] else None,
+                department_id=new_dept.id
             ))
 
+    # Services (Disciplines) opslaan
     for srv_name in form.getlist("services[]"):
         srv_name = srv_name.lower().strip()
         if srv_name:
@@ -354,102 +309,6 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
             new_dept.services.append(service)
 
     log_action(db, current_user.username, "CREATE", "Afdeling", new_dept.name, "Nieuwe afdeling/fusie aangemaakt.")
-    db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
-
-
-@app.post("/departments/edit/{dept_id}")
-async def update_department(request: Request, dept_id: int, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    dept = db.query(Department).filter(Department.id == dept_id).first()
-    if not dept: raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
-
-    form = await request.form()
-    new_province = form.get("province")
-
-    if not has_permission(current_user, dept.province) or (
-            new_province and not has_permission(current_user, new_province)):
-        return HTMLResponse("<h2>Actie geweigerd</h2><p>Je hebt geen rechten.</p><a href='/departments'>Ga terug</a>",
-                            status_code=403)
-
-    changes = []
-
-    # 1. Bepaal Coördinaten Afdeling (Inclusief Fallback naar Centroid)
-    form_lat = float(form.get("lat")) if form.get("lat") else None
-    form_lon = float(form.get("lon")) if form.get("lon") else None
-    new_address = form.get("address")
-
-    # Check of we opnieuw moeten geocoden
-    if form_lat is not None and form_lon is not None:
-        dept.lat = form_lat
-        dept.lon = form_lon
-    elif new_address and new_address != dept.address:
-        # Adres is aangepast en geen handmatige coords, probeer API
-        dept.lat, dept.lon = resolve_address(new_address)
-    elif dept.lat is None or dept.lon is None:
-        # Er was nog niks en niks ingevuld: Probeer API
-        if new_address:
-            dept.lat, dept.lon = resolve_address(new_address)
-
-    # Ultieme fallback voor de bewerk-modus: Bereken zwaartepunt van polygonen!
-    if dept.lat is None or dept.lon is None:
-        sql = """SELECT ST_X(ST_Centroid(ST_Union(geom::geometry))) as lon, ST_Y(ST_Centroid(ST_Union(geom::geometry))) as lat FROM department_shapes WHERE department_id = :dept_id"""
-        result = db.execute(text(sql), {"dept_id": dept.id}).fetchone()
-        if result and result.lat and result.lon:
-            dept.lat, dept.lon = result.lat, result.lon
-
-    if str(dept.name) != str(form.get("name")): changes.append("naam")
-    if str(dept.province) != str(form.get("province")): changes.append("provincie")
-
-    dept.name = form.get("name")
-    dept.province = new_province
-    dept.group = form.get("group")
-    dept.address = new_address
-    dept.email = form.get("email")
-    dept.telephone = form.get("telephone")
-    dept.entiteitnummer = form.get("entiteitnummer")
-    dept.color = form.get("color")
-    dept.type = "provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling"
-    dept.transparent = True if form.get("transparent") else False
-
-    # 2. Voertuigen
-    db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
-    v_names = form.getlist("vehicle_name[]")
-    v_fleets = form.getlist("vehicle_fleet[]")
-    v_addresses = form.getlist("vehicle_address[]")
-    v_lats = form.getlist("vehicle_lat[]")
-    v_lons = form.getlist("vehicle_lon[]")
-
-    for i in range(len(v_names)):
-        if v_names[i].strip():
-            v_lat = float(v_lats[i]) if v_lats[i] else None
-            v_lon = float(v_lons[i]) if v_lons[i] else None
-
-            if v_lat is None and v_lon is None:
-                if v_addresses[i] and v_addresses[i].strip():
-                    v_lat, v_lon = resolve_address(v_addresses[i])
-                else:
-                    v_lat, v_lon = dept.lat, dept.lon  # Fallback
-
-            db.add(Vehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
-                           address=v_addresses[i].strip() if v_addresses[i] else None,
-                           lat=v_lat, lon=v_lon, department_id=dept.id))
-
-    dept.services.clear()
-    for srv_name in form.getlist("services[]"):
-        srv_name = srv_name.lower().strip()
-        if srv_name:
-            service = db.query(Service).filter(Service.name == srv_name).first()
-            if not service:
-                service = Service(name=srv_name)
-                db.add(service)
-                db.flush()
-            dept.services.append(service)
-
-    log_action(db, current_user.username, "UPDATE", "Afdeling", dept.name,
-               f"Gewijzigd: {', '.join(changes) if changes else 'Subdata'}")
     db.commit()
     return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -466,14 +325,9 @@ async def create_sit(request: Request, db: Session = Depends(get_db)):
     province = form.get("province")
     verify_edit_permission(current_user, province)
 
-    sit_lat = float(form.get("lat")) if form.get("lat") else None
-    sit_lon = float(form.get("lon")) if form.get("lon") else None
-    if sit_lat is None and sit_lon is None and form.get("address"):
-        sit_lat, sit_lon = resolve_address(form.get("address"))
-
     new_sit = SitLocation(
         name=form.get("name"), province=province, type=form.get("type"), address=form.get("address"),
-        lat=sit_lat, lon=sit_lon
+        lat=float(form.get("lat")) if form.get("lat") else None, lon=float(form.get("lon")) if form.get("lon") else None
     )
     db.add(new_sit)
     db.flush()
@@ -489,51 +343,6 @@ async def create_sit(request: Request, db: Session = Depends(get_db)):
     db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
 
-
-@app.post("/sit-locations/edit/{sit_id}")
-async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
-    if not sit: raise HTTPException(status_code=404, detail="SIT niet gevonden")
-
-    form = await request.form()
-    new_province = form.get("province")
-
-    if not has_permission(current_user, sit.province) or (
-            new_province and not has_permission(current_user, new_province)):
-        return HTMLResponse(
-            "<h2>Actie geweigerd</h2><p>Geen rechten in deze provincie.</p><a href='/sit-locations'>Ga terug</a>",
-            status_code=403)
-
-    form_lat = float(form.get("lat")) if form.get("lat") else None
-    form_lon = float(form.get("lon")) if form.get("lon") else None
-    new_address = form.get("address")
-
-    if form_lat is not None and form_lon is not None:
-        sit.lat, sit.lon = form_lat, form_lon
-    elif new_address and new_address != sit.address:
-        sit.lat, sit.lon = resolve_address(new_address)
-    elif sit.lat is None or sit.lon is None:
-        if new_address: sit.lat, sit.lon = resolve_address(new_address)
-
-    sit.name = form.get("name")
-    sit.province = new_province
-    sit.type = form.get("type")
-    sit.address = new_address
-
-    db.query(SitVehicle).filter(SitVehicle.sit_location_id == sit.id).delete()
-    v_names = form.getlist("vehicle_name[]")
-    v_fleets = form.getlist("vehicle_fleet[]")
-    for i in range(len(v_names)):
-        if v_names[i].strip():
-            db.add(SitVehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
-                              sit_location_id=sit.id))
-
-    log_action(db, current_user.username, "UPDATE", "SIT-Locatie", sit.name, "SIT Gewijzigd")
-    db.commit()
-    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
 
 # --- FUSIE / MERGE (MET BEIDE ROUTES) ---
 @app.get("/departments/merge", response_class=HTMLResponse)
@@ -881,6 +690,73 @@ async def edit_department_page(request: Request, dept_id: int, db: Session = Dep
                                                "is_zetel": is_zetel})
 
 
+@app.post("/departments/edit/{dept_id}")
+async def update_department(request: Request, dept_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if not dept: raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
+
+    form = await request.form()
+    new_province = form.get("province")
+
+    if not has_permission(current_user, dept.province) or (
+            new_province and not has_permission(current_user, new_province)):
+        return HTMLResponse(
+            "<h2>Actie geweigerd</h2><p>Je hebt geen rechten om deze afdeling te bewerken.</p><a href='/departments'>Ga terug</a>",
+            status_code=403)
+
+    changes = []
+    if str(dept.name) != str(form.get("name")): changes.append("naam")
+    if str(dept.province) != str(form.get("province")): changes.append("provincie")
+
+    dept.name = form.get("name")
+    dept.province = new_province
+    dept.group = form.get("group")
+    dept.address = form.get("address")
+    dept.email = form.get("email")
+    dept.telephone = form.get("telephone")
+    dept.entiteitnummer = form.get("entiteitnummer")
+    dept.color = form.get("color")
+    dept.lat = float(form.get("lat")) if form.get("lat") else None
+    dept.lon = float(form.get("lon")) if form.get("lon") else None
+    dept.type = "provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling"
+    dept.transparent = True if form.get("transparent") else False
+
+    db.query(Municipality).filter(Municipality.department_id == dept.id).delete()
+    for m_name in form.getlist("members[]"):
+        if m_name.strip(): db.add(Municipality(name=m_name.strip(), department_id=dept.id))
+
+    db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
+    v_names = form.getlist("vehicle_name[]")
+    v_fleets = form.getlist("vehicle_fleet[]")
+    v_addresses = form.getlist("vehicle_address[]")
+    v_lats = form.getlist("vehicle_lat[]")
+    v_lons = form.getlist("vehicle_lon[]")
+    for i in range(len(v_names)):
+        if v_names[i].strip():
+            db.add(Vehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
+                           address=v_addresses[i].strip() if v_addresses[i] else None,
+                           lat=float(v_lats[i]) if v_lats[i] else None, lon=float(v_lons[i]) if v_lons[i] else None,
+                           department_id=dept.id))
+
+    dept.services.clear()
+    for srv_name in form.getlist("services[]"):
+        srv_name = srv_name.lower().strip()
+        if srv_name:
+            service = db.query(Service).filter(Service.name == srv_name).first()
+            if not service:
+                service = Service(name=srv_name)
+                db.add(service)
+                db.flush()
+            dept.services.append(service)
+
+    log_action(db, current_user.username, "UPDATE", "Afdeling", dept.name,
+               f"Gewijzigd: {', '.join(changes) if changes else 'Subdata'}")
+    db.commit()
+    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @app.post("/departments/delete/{dept_id}")
 async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
@@ -916,6 +792,42 @@ async def edit_sit_page(request: Request, sit_id: int, db: Session = Depends(get
                                       context={"user": current_user, "sit": sit, "readonly": readonly})
 
 
+@app.post("/sit-locations/edit/{sit_id}")
+async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    sit = db.query(SitLocation).filter(SitLocation.id == sit_id).first()
+    if not sit: raise HTTPException(status_code=404, detail="SIT niet gevonden")
+
+    form = await request.form()
+    new_province = form.get("province")
+
+    if not has_permission(current_user, sit.province) or (
+            new_province and not has_permission(current_user, new_province)):
+        return HTMLResponse(
+            "<h2>Actie geweigerd</h2><p>Geen rechten in deze provincie.</p><a href='/sit-locations'>Ga terug</a>",
+            status_code=403)
+
+    sit.name = form.get("name")
+    sit.province = new_province
+    sit.type = form.get("type")
+    sit.address = form.get("address")
+    sit.lat = float(form.get("lat")) if form.get("lat") else None
+    sit.lon = float(form.get("lon")) if form.get("lon") else None
+
+    db.query(SitVehicle).filter(SitVehicle.sit_location_id == sit.id).delete()
+    v_names = form.getlist("vehicle_name[]")
+    v_fleets = form.getlist("vehicle_fleet[]")
+    for i in range(len(v_names)):
+        if v_names[i].strip():
+            db.add(SitVehicle(name=v_names[i].strip(), fleet_nr=v_fleets[i].strip() if v_fleets[i] else None,
+                              sit_location_id=sit.id))
+
+    log_action(db, current_user.username, "UPDATE", "SIT-Locatie", sit.name, "SIT Gewijzigd")
+    db.commit()
+    return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @app.post("/sit-locations/delete/{sit_id}")
 async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db)):
@@ -932,154 +844,6 @@ async def delete_sit(sit_id: int, request: Request, db: Session = Depends(get_db
         db.delete(sit)
         db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
-
-
-# =========================================================
-# API ROUTES VOOR DE INTERACTIEVE WERKINGSGEBIEDEN KAART
-# =========================================================
-
-@app.get("/api/departments/{dept_id}/shapes")
-async def get_department_shapes(dept_id: int, db: Session = Depends(get_db)):
-    """
-    Haalt polygonen op met een strikte provinciegrens (op basis van postcodes):
-    - Lokale afdeling: Eigen polygonen + Vrije polygonen binnen 10km (enkele binnen eigen provincie).
-    - Provinciale zetel: Eigen polygonen + Vrije polygonen binnen de hele eigen provincie.
-    Polygonen van andere afdelingen worden altijd genegeerd.
-    """
-    dept = db.query(Department).filter(Department.id == dept_id).first()
-    if not dept:
-        raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
-
-    params = {"dept_id": dept_id}
-
-    # 1. Bepaal de postcoderange afhankelijk van de provincie
-    postcode_filter = "1=1"  # Fallback: toon alles als de provincie onbekend is
-    prov = dept.province.lower() if dept.province else ""
-
-    # Gebruik dubbele backslash (\\D) in Python string voor de regex in PostgreSQL
-    safe_pc = "CAST(NULLIF(regexp_replace(postcode, '\\D', '', 'g'), '') AS INTEGER)"
-
-    if prov == "antwerpen":
-        postcode_filter = f"{safe_pc} BETWEEN 2000 AND 2999"
-    elif prov == "limburg":
-        postcode_filter = f"{safe_pc} BETWEEN 3500 AND 3999"
-    elif prov == "oost-vlaanderen":
-        postcode_filter = f"{safe_pc} BETWEEN 9000 AND 9999"
-    elif prov == "west-vlaanderen":
-        postcode_filter = f"{safe_pc} BETWEEN 8000 AND 8999"
-    elif prov == "vlaams-brabant":
-        postcode_filter = f"({safe_pc} BETWEEN 1500 AND 1999 OR {safe_pc} BETWEEN 3000 AND 3499)"
-    elif prov == "brussel":
-        postcode_filter = f"{safe_pc} BETWEEN 1000 AND 1299"
-
-    # 2. Bouw de SQL op
-    if dept.type == "provinciale_zetel":
-        sql = f"""
-        SELECT 
-            id, shape_id, name, department_id, match_method,
-            ST_AsGeoJSON(geom) as geojson
-        FROM department_shapes
-        WHERE department_id = :dept_id 
-           OR (department_id IS NULL AND {postcode_filter})
-        """
-    else:
-        # Lokale afdeling (10km restrictie + postcode restrictie)
-        sql = f"""
-        WITH core_shapes AS (
-            SELECT ST_Union(geom) as combined_geom
-            FROM department_shapes
-            WHERE department_id = :dept_id
-        )
-        SELECT 
-            id, shape_id, name, department_id, match_method,
-            ST_AsGeoJSON(geom) as geojson
-        FROM department_shapes
-        WHERE department_id = :dept_id
-        """
-
-        if dept.lat and dept.lon:
-            sql += f"""
-            OR (
-                department_id IS NULL 
-                AND {postcode_filter}
-                AND (
-                    ((SELECT combined_geom FROM core_shapes) IS NOT NULL AND ST_DWithin(geom::geography, (SELECT combined_geom FROM core_shapes)::geography, 10000))
-                    OR 
-                    ((SELECT combined_geom FROM core_shapes) IS NULL AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, 10000))
-                )
-            )
-            """
-            params["lon"] = dept.lon
-            params["lat"] = dept.lat
-        else:
-            sql += f"""
-            OR (
-                department_id IS NULL 
-                AND {postcode_filter}
-                AND (
-                    ((SELECT combined_geom FROM core_shapes) IS NOT NULL AND ST_DWithin(geom::geography, (SELECT combined_geom FROM core_shapes)::geography, 10000))
-                    OR 
-                    ((SELECT combined_geom FROM core_shapes) IS NULL)
-                )
-            )
-            """
-
-    result = db.execute(text(sql), params).mappings().fetchall()
-
-    features = []
-    for r in result:
-        geom_str = r["geojson"]
-        if not geom_str:
-            continue
-
-        status = "empty"
-        if r["department_id"] == dept_id:
-            status = "current"
-
-        method_str = r["match_method"] if r["match_method"] else "Geen"
-
-        features.append({
-            "type": "Feature",
-            "geometry": json.loads(geom_str),
-            "properties": {
-                "shape_id": r["shape_id"],
-                "name": r["name"],
-                "status": status,
-                "current_department_id": r["department_id"],
-                "match_method": method_str
-            }
-        })
-
-    return {"type": "FeatureCollection", "features": features}
-
-
-@app.post("/api/departments/{dept_id}/shapes/{shape_id}/toggle")
-async def toggle_department_shape(dept_id: int, shape_id: str, request: Request, db: Session = Depends(get_db)):
-    """Koppelt of ontkoppelt een polygoon wanneer je erop klikt in de kaart."""
-    current_user = get_current_user(request, db)
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Niet ingelogd")
-
-    shape = db.query(DepartmentShape).filter(DepartmentShape.shape_id == shape_id).first()
-    if not shape:
-        raise HTTPException(status_code=404, detail="Shape niet gevonden")
-
-    # Toggle logica
-    if shape.department_id == dept_id:
-        shape.department_id = None
-        shape.match_method = None
-        action = "unassigned"
-        log_action(db, current_user.username, "UPDATE", "Werkingsgebied", shape.name,
-                   f"Ontkoppeld van afdeling {dept_id}")
-    else:
-        shape.department_id = dept_id
-        shape.match_method = MatchMethodEnum.MANUELE_OVERRIDE
-        action = "assigned"
-        log_action(db, current_user.username, "UPDATE", "Werkingsgebied", shape.name,
-                   f"Manueel gekoppeld aan afdeling {dept_id}")
-
-    db.commit()
-    return {"action": action}
 
 
 @app.post("/generate-map")
@@ -1114,35 +878,7 @@ async def trigger_map_generation(request: Request, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail="Fout bij het genereren van de kaart.")
 
 
-@app.get("/api/departments/{dept_id}/markers")
-async def get_department_markers(dept_id: int, db: Session = Depends(get_db)):
-    """Haalt de opgeslagen coördinaten op van de hoofdlocatie en voertuigen."""
-    dept = db.query(Department).filter(Department.id == dept_id).first()
-    if not dept:
-        raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
+# Route om de statische kaart daadwerkelijk te kunnen bekijken
+from fastapi.staticfiles import StaticFiles
 
-    markers = []
-
-    # 1. Hoofdlocatie van de afdeling
-    if dept.lat and dept.lon:
-        markers.append({
-            "type": "main",
-            "name": dept.name,
-            "address": dept.address or "Geen adres",
-            "lat": dept.lat,
-            "lon": dept.lon
-        })
-
-    # 2. Ziekenwagens en voertuigen
-    for vehicle in dept.vehicles:
-        if vehicle.lat and vehicle.lon:
-            markers.append({
-                "type": "vehicle",
-                "name": vehicle.name,
-                "fleet_nr": vehicle.fleet_nr or "Onbekend",
-                "address": vehicle.address or "Geen adres",
-                "lat": vehicle.lat,
-                "lon": vehicle.lon
-            })
-
-    return {"markers": markers}
+app.mount("/static", StaticFiles(directory="/opt/MapGenerator/static"), name="static")
