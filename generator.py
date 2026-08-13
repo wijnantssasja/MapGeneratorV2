@@ -22,7 +22,7 @@ from jinja2 import Template
 # Database imports
 from database import SessionLocal, engine, Department, Vehicle, SitLocation, Service
 
-# Onderdruk storende CRS waarschuwingen (zoals in originele script)
+# Onderdruk storende CRS waarschuwingen
 warnings.filterwarnings("ignore", message=".*Geometry is in a geographic CRS.*")
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -202,9 +202,9 @@ def background_generate_map(province_filter: str, username: str):
 
         dept_ids = [str(d.id) for d in depts]
 
-        # 2. Haal GeoJSON shapes op
+        # 2. Haal GeoJSON shapes op (Aangepast: 'name as hoofdgemeente' i.p.v. 'parent_name')
         sql = f"""
-            SELECT id, shape_id, name as deelgemeente, parent_name as hoofdgemeente, department_id, geom 
+            SELECT id, shape_id, name as deelgemeente, name as hoofdgemeente, department_id, geom 
             FROM department_shapes 
             WHERE department_id IN ({','.join(dept_ids)})
         """
@@ -231,7 +231,6 @@ def background_generate_map(province_filter: str, username: str):
                 "is_transparent": d.transparent,
                 "services": srvs,
                 "website_url": f"https://www.rodekruis.be/afdeling/{d.name.lower().replace(' ', '-')}"
-                # Base URL assumption
             })
 
         df_depts = pd.DataFrame(dept_data)
@@ -416,7 +415,7 @@ def background_generate_map(province_filter: str, username: str):
                                                   'className': 'layer-regio'}, interactive=False
                     ).add_to(fg_regio)
 
-            # Regio Text Labels (Slimme positionering)
+            # Regio Text Labels
             base_style = 'position: absolute; left: 0px; top: 0px; transform: translate(-50%, -50%); font-family: DejaVu Sans, sans-serif; white-space: nowrap; text-align: center; pointer-events: none;'
             for gname, row in regio_proj.to_crs(epsg=4326).iterrows():
                 if pd.isna(gname) or str(gname).strip() == "Geen Regio": continue
@@ -573,7 +572,6 @@ def background_generate_map(province_filter: str, username: str):
                                     initial=False)
             search_control.add_to(m)
 
-            # Auto-clear logica
             search_var_name = f"{search_layer.get_name()}searchControl"
             custom_search_js = f"""
             <script>

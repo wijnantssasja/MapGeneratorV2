@@ -35,14 +35,6 @@ class User(Base):
     force_password_change = Column(Boolean, default=False)  # <--- Nieuwe kolom
 
 
-class CoordinateCache(Base):
-    __tablename__ = 'coordinate_cache'
-    id = Column(Integer, primary_key=True, index=True)
-    address = Column(String(255), unique=True, nullable=False, index=True)
-    lat = Column(Float, nullable=False)
-    lon = Column(Float, nullable=False)
-
-
 class Service(Base):
     __tablename__ = 'services'
     id = Column(Integer, primary_key=True, index=True)
