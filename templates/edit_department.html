@@ -321,42 +321,97 @@
         // ==========================================
         // PINNETJES INLADEN (Hoofdlocatie & Voertuigen)
         // ==========================================
+        // ==========================================
+        // PINNETJES INLADEN & GROEPEREN OP COÖRDINAAT
+        // ==========================================
         async function loadMarkers() {
             try {
                 const response = await fetch(`/api/departments/${DEPARTMENT_ID}/markers`);
                 const data = await response.json();
 
+                // Stap 1: Groepeer markers die exact dezelfde coördinaten hebben
+                const coordMap = {};
                 data.markers.forEach(marker => {
-                    let color = marker.type === 'main' ? '#d32f2f' : '#1976d2';
-                    let iconClass = marker.type === 'main' ? 'fa-star' : 'fa-ambulance';
-                    let title = marker.type === 'main' ? 'Hoofdlocatie' : 'Ziekenwagen';
+                    // Afronden op 6 decimalen om kleine afrondingsverschillen tevangen
+                    const key = `${marker.lat.toFixed(6)},${marker.lon.toFixed(6)}`;
+                    if (!coordMap[key]) {
+                        coordMap[key] = [];
+                    }
+                    coordMap[key].push(marker);
+                });
+
+                // Stap 2: Loop over elke unieke coördinaat en teken 1 slimme marker
+                Object.keys(coordMap).forEach(key => {
+                    const itemsAtCoord = coordMap[key];
+                    const [lat, lon] = key.split(',').map(Number);
+
+                    const hasMain = itemsAtCoord.some(m => m.type === 'main');
+                    const vehicles = itemsAtCoord.filter(m => m.type === 'vehicle');
+                    const totalCount = itemsAtCoord.length;
+
+                    let color, iconClass, title;
+
+                    if (hasMain && vehicles.length > 0) {
+                        // Gecombineerd: Hoofdlocatie + Voertuig(en) op dezelfde plek
+                        color = '#7b1fa2'; // Paars voor gecombineerd
+                        iconClass = 'fa-layer-group';
+                        title = 'Hoofdlocatie & Voertuigen';
+                    } else if (hasMain) {
+                        color = '#d32f2f'; // Rood voor alleen hoofdlocatie
+                        iconClass = 'fa-star';
+                        title = 'Hoofdlocatie';
+                    } else {
+                        color = '#1976d2'; // Blauw voor voertuig(en)
+                        iconClass = 'fa-ambulance';
+                        title = 'Voertuig(en)';
+                    }
+
+                    // Badge als er meerdere items op deze plek staan
+                    let badgeHtml = totalCount > 1
+                        ? `<div style='position: absolute; bottom: 8px; right: -6px; background-color: #333; color: white; border-radius: 50%; width: 20px; height: 20px; line-height: 20px; text-align: center; font-size: 11px; font-weight: bold; border: 2px solid white; box-shadow: 1px 1px 2px rgba(0,0,0,0.4);'>${totalCount}</div>`
+                        : '';
 
                     let customIcon = L.divIcon({
                         className: 'custom-pin',
-                        html: `<div style='position: relative; width: 30px; height: 42px; text-align: center; margin-left: -15px; margin-top: -42px;'>
-                                   <i class='fa fa-map-marker' style='font-size: 42px; color: ${color}; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);'></i>
-                                   <i class='fa ${iconClass}' style='font-size: 16px; color: white; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);'></i>
+                        html: `<div style='position: relative; width: 30px; height: 42px; text-align: center;'>
+                                   <i class='fa fa-map-marker' style='font-size: 42px; color: ${color}; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); display: block;'></i>
+                                   <i class='fa ${iconClass}' style='font-size: 15px; color: white; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);'></i>
+                                   ${badgeHtml}
                                </div>`,
                         iconSize: [30, 42],
-                        iconAnchor: [15, 42]
+                        iconAnchor: [15, 42],
+                        popupAnchor: [0, -42]
                     });
 
-                    let popupHtml = `
-                        <div style='font-family: sans-serif; min-width: 200px;'>
-                            <h4 style='margin: 0 0 5px 0; color: ${color}; border-bottom: 1px solid ${color}; padding-bottom: 5px;'>
-                                ${title}: ${marker.name}
-                            </h4>
-                            <div style='font-size: 13px;'>
-                                <b>Adres:</b> ${marker.address}<br>
-                                ${marker.type === 'vehicle' && marker.fleet_nr ? `<b>Vlootnr:</b> ${marker.fleet_nr}` : ''}
-                            </div>
-                        </div>
-                    `;
+                    // Bouw een gecombineerde popup HTML voor alle items op deze coördinaat
+                    let popupHtml = `<div style='font-family: sans-serif; min-width: 220px; max-height: 300px; overflow-y: auto;'>`;
 
-                    L.marker([marker.lat, marker.lon], { icon: customIcon })
+                    itemsAtCoord.forEach((item, index) => {
+                        let itemTitle = item.type === 'main' ? 'Hoofdlocatie' : 'Voertuig';
+                        let itemColor = item.type === 'main' ? '#d32f2f' : '#1976d2';
+
+                        if (index > 0) {
+                            popupHtml += `<hr style='border:0; border-top:1px solid #eee; margin: 8px 0;'>`;
+                        }
+
+                        popupHtml += `
+                            <h4 style='margin: 0 0 4px 0; color: ${itemColor}; font-size: 13px; border-bottom: 1px solid ${itemColor}; padding-bottom: 3px;'>
+                                ${itemTitle}: ${item.name}
+                            </h4>
+                            <div style='font-size: 12px;'>
+                                <b>Adres:</b> ${item.address}<br>
+                                ${item.type === 'vehicle' && item.fleet_nr ? `<b>Vlootnr:</b> ${item.fleet_nr}` : ''}
+                            </div>
+                        `;
+                    });
+
+                    popupHtml += `</div>`;
+
+                    L.marker([lat, lon], { icon: customIcon })
                         .addTo(map)
                         .bindPopup(popupHtml);
                 });
+
             } catch (error) {
                 console.error("Fout bij ophalen markers:", error);
             }

@@ -1,11 +1,13 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text, Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from datetime import datetime
 import enum
 from geoalchemy2 import Geometry  # <-- Deze moet bovenaan staan!
+from datetime import datetime, timezone
 
 SQLALCHEMY_DATABASE_URL = "postgresql://admin:secretpassword@192.168.2.10:5432/rodekruis_mapgen"
-#SQLACLHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpassword@db:5432/rodekruis_mapgen")
+# SQLACLHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpassword@db:5432/rodekruis_mapgen")
 
 
 engine = create_engine(
@@ -30,15 +32,6 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False)
     province_access = Column(String(50), nullable=True)
-
-
-class CoordinateCache(Base):
-    __tablename__ = 'coordinate_cache'
-    id = Column(Integer, primary_key=True, index=True)
-    address = Column(String(255), unique=True, nullable=False, index=True)
-    lat = Column(Float, nullable=False)
-    lon = Column(Float, nullable=False)
-
 
 class Service(Base):
     __tablename__ = 'services'
@@ -164,3 +157,13 @@ class DepartmentShape(Base):
     match_method = Column(Enum(MatchMethodEnum), nullable=True)
 
     geom = Column(Geometry(geometry_type='MULTIPOLYGON', srid=4326))
+
+
+class CoordinateCache(Base):
+    __tablename__ = "coordinate_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    address = Column(String, unique=True, index=True)
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    last_checked = Column(DateTime, default=lambda: datetime.now(timezone.utc))
