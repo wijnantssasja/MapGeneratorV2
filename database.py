@@ -5,7 +5,7 @@ import enum
 from geoalchemy2 import Geometry  # <-- Deze moet bovenaan staan!
 
 SQLALCHEMY_DATABASE_URL = "postgresql://admin:secretpassword@192.168.2.10:5432/rodekruis_mapgen"
-#SQLACLHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpassword@db:5432/rodekruis_mapgen")
+# SQLACLHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpassword@db:5432/rodekruis_mapgen")
 
 
 engine = create_engine(
@@ -30,7 +30,7 @@ class User(Base):
     password_hash = Column(String)
     role = Column(String)
     province_access = Column(String)
-    force_password_change = Column(Boolean, default=False) # <--- Nieuwe kolom
+    force_password_change = Column(Boolean, default=False)  # <--- Nieuwe kolom
 
 
 class CoordinateCache(Base):
@@ -166,3 +166,12 @@ class DepartmentShape(Base):
 
     geom = Column(Geometry(geometry_type='MULTIPOLYGON', srid=4326))
 
+
+class CoordinateCache(Base):
+    __tablename__ = "coordinate_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    address = Column(String, unique=True, index=True)
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    last_checked = Column(DateTime, default=lambda: datetime.now(timezone.utc))
