@@ -24,12 +24,13 @@ department_services = Table(
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False)
-    province_access = Column(String(50), nullable=True)
+    username = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    role = Column(String)
+    province_access = Column(String)
+    force_password_change = Column(Boolean, default=False) # <--- Nieuwe kolom
 
 
 class CoordinateCache(Base):
@@ -164,3 +165,4 @@ class DepartmentShape(Base):
     match_method = Column(Enum(MatchMethodEnum), nullable=True)
 
     geom = Column(Geometry(geometry_type='MULTIPOLYGON', srid=4326))
+

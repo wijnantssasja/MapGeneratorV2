@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Preview: {{ filename }} - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h2 style="margin: 0;">Preview: <span style="color: #666; font-size: 18px;">{{ filename }}</span></h2>
+    <div>
+        <a href="/maps" style="color: #555; text-decoration: none; font-weight: bold; margin-right: 15px;">&larr; Terug naar overzicht</a>
+        <a href="/maps/download/{{ filename }}" style="background-color: #4CAF50; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-weight: bold;">
+            <i class="fa fa-download"></i> Download HTML
+        </a>
+    </div>
+</div>
+
+<!-- De iFrame laadt het daadwerkelijke gegenereerde .html bestand in via de /static route -->
+<div style="background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); height: 75vh;">
+    <iframe src="/static/{{ filename }}" style="width: 100%; height: 100%; border: none; border-radius: 4px;"></iframe>
+</div>
+{% endblock %}

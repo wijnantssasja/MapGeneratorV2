@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Kaarten Beheer - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<div class="header-container" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Gegenereerde Kaarten (Max 2GB Opslag)</h2>
+</div>
+
+<!-- GENERATOR BLOK -->
+<div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; border-left: 5px solid #d32f2f;">
+    <h3 style="margin-top: 0;">Nieuwe Kaart Genereren</h3>
+    <p style="color: #666; font-size: 14px;">Het genereren gebeurt op de achtergrond en kan enkele minuten duren. Oude kaarten worden automatisch verwijderd als de 2GB opslaglimiet wordt bereikt.</p>
+    
+    <form action="/maps/generate" method="POST" style="display: flex; align-items: center; gap: 15px;">
+        <select name="province" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 250px;">
+            {% for prov in provinces %}
+                <option value="{{ prov }}">{{ prov }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" style="background-color: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+            <i class="fa fa-cogs"></i> Start Generatie
+        </button>
+    </form>
+</div>
+
+<!-- LIJST MET BESTANDEN -->
+<div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                <th style="padding: 12px; text-align: left;">Bestandsnaam</th>
+                <th style="padding: 12px; text-align: left;">Aangemaakt op</th>
+                <th style="padding: 12px; text-align: left;">Grootte</th>
+                <th style="padding: 12px; text-align: center;">Acties</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in map_files %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px; font-weight: bold; color: #333;">{{ file.name }}</td>
+                <td style="padding: 12px; color: #666;">{{ file.created }}</td>
+                <td style="padding: 12px; color: #666;">{{ file.size_mb }} MB</td>
+                <td style="padding: 12px; text-align: center;">
+                    <a href="/maps/preview/{{ file.name }}" style="background-color: #1976d2; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; font-size: 13px;">
+                        <i class="fa fa-eye"></i> Bekijk
+                    </a>
+                    <a href="/maps/download/{{ file.name }}" style="background-color: #4CAF50; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px;">
+                        <i class="fa fa-download"></i> Download
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="padding: 20px; text-align: center; color: #888;">Er zijn nog geen kaarten gegenereerd.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Als de url ?status=generating bevat, toon een kleine popup!
+    if(window.location.search.includes('status=generating')) {
+        alert("Generatie gestart! De kaart wordt op de achtergrond opgebouwd. Ververs deze pagina over een paar minuten om het resultaat te zien.");
+    }
+</script>
+{% endblock %}

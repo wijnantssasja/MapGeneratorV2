@@ -55,9 +55,21 @@
             {% endif %}
         </div>
     </div>
-    <div class="user-info">
-        <span>Ingelogd als: <strong>{{ user.username }}</strong> ({{ user.role }})</span>
-        <a href="/logout" class="btn-logout">Uitloggen</a>
+    <div class="user-menu" style="float: right; margin-top: 15px; margin-right: 20px;">
+        {% if user %}
+        <span style="color: #555; margin-right: 20px;">
+            <i class="fa fa-user"></i> <b>{{ user.username }}</b>
+        </span>
+        <a href="/profile/change-password"
+           style="color: #1976d2; text-decoration: none; font-weight: bold; margin-right: 15px;"
+           title="Wachtwoord wijzigen">
+            <i class="fa fa-key"></i> Wachtwoord
+        </a>
+        <a href="/logout"
+           style="background-color: #d32f2f; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;">
+            <i class="fa fa-sign-out-alt"></i> Uitloggen
+        </a>
+        {% endif %}
     </div>
 </div>
 {% endif %}

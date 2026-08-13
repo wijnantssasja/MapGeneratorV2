@@ -14,6 +14,15 @@ from database import DepartmentShape, MatchMethodEnum  # <-- Voeg deze regel toe
 from sqlalchemy import text
 from geopy.geocoders import Nominatim
 import time
+import os
+import glob
+from datetime import datetime
+from urllib.parse import unquote
+from fastapi import BackgroundTasks
+from fastapi.responses import FileResponse
+
+# Importeer de losse generator componenten
+from generator import background_generate_map, OUTPUT_DIR
 
 # Create database tables if not exist
 Base.metadata.create_all(bind=engine)
@@ -21,8 +30,11 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Rode Kruis Map Generator")
 
 # SECURE SESSION MIDDLEWARE (Replace with a strong random secret key in production)
-app.add_middleware(SessionMiddleware, secret_key="rk-map-generator-super-secret-key-change-me")
-
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="rk-map-generator-super-secret-key-change-me",
+    max_age=14400  # 4 uur in seconden
+)
 templates = Jinja2Templates(directory="templates")
 
 # Route om de statische kaart daadwerkelijk te kunnen bekijken
@@ -61,12 +73,28 @@ def log_action(db: Session, username: str, action: str, table_name: str, row_nam
     db.add(log)
 
 
-# Helper: Get current logged-in user from session
+# Helper: Get current logged-in user from session (Met 4-uur controle & Hard-Lock)
 def get_current_user(request: Request, db: Session = Depends(get_db)):
     username = request.session.get("username")
     if not username:
         return None
+
+    # Controleer of de sessie is verlopen (4 uur inactiviteit)
+    login_time = request.session.get("login_time", 0)
+    if time.time() - login_time > 14400:
+        request.session.clear()
+        return None
+
     user = db.query(User).filter(User.username == username).first()
+
+    # HARD-LOCK: Mag deze gebruiker rondkijken, of MOET het wachtwoord gereset worden?
+    if user and getattr(user, 'force_password_change', False):
+        # Ze mogen enkel naar de reset pagina (om te wijzigen) of naar logout (om weg te gaan)
+        allowed_paths = ["/profile/force-password-change", "/logout"]
+        if request.url.path not in allowed_paths:
+            # BAM! Teruggestuurd.
+            raise ForcePasswordChangeException()
+
     return user
 
 
@@ -115,17 +143,13 @@ def resolve_address(address_str):
 # ---------------------------------------------------------
 # AUTHENTICATION ROUTES
 # ---------------------------------------------------------
-
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, db: Session = Depends(get_db)):
-    # Controleer of de gebruiker écht bestaat in de huidige database
     current_user = get_current_user(request, db)
     if current_user:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
-    # Als de database de gebruiker niet kent, gooi de oude cookie weg
     request.session.clear()
-
     return templates.TemplateResponse(request=request, name="login.html", context={"error": None})
 
 
@@ -133,7 +157,6 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
 async def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
 
-    # Verify user exists and password matches
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
         return templates.TemplateResponse(
             request=request,
@@ -141,10 +164,15 @@ async def login(request: Request, username: str = Form(...), password: str = For
             context={"error": "Ongeldige gebruikersnaam of wachtwoord."}
         )
 
-    # Set session data
+    # Zet de sessie variabelen en de starttijd
     request.session["username"] = user.username
     request.session["role"] = user.role
     request.session["province_access"] = user.province_access
+    request.session["login_time"] = time.time()
+
+    # Controleer of de admin een wachtwoord-reset heeft geforceerd
+    if getattr(user, 'force_password_change', False):
+        return RedirectResponse(url="/profile/force-password-change", status_code=status.HTTP_303_SEE_OTHER)
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -287,6 +315,19 @@ def log_action(db: Session, username: str, action: str, table_name: str, row_nam
         db.add(log)
     except Exception as e:
         print(f"Kon log niet wegschrijven: {e}")
+
+
+# =========================================================
+# HARD-LOCK EXCEPTION VOOR WACHTWOORD RESET
+# =========================================================
+class ForcePasswordChangeException(Exception):
+    pass
+
+
+@app.exception_handler(ForcePasswordChangeException)
+async def force_password_handler(request: Request, exc: ForcePasswordChangeException):
+    # Als deze error wordt opgeworpen, stuur de gebruiker ALTIJD terug naar de reset pagina
+    return RedirectResponse(url="/profile/force-password-change", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # =========================================================
@@ -534,6 +575,7 @@ async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db
     log_action(db, current_user.username, "UPDATE", "SIT-Locatie", sit.name, "SIT Gewijzigd")
     db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
 
 # --- FUSIE / MERGE (MET BEIDE ROUTES) ---
 @app.get("/departments/merge", response_class=HTMLResponse)
@@ -790,6 +832,7 @@ async def create_user_route(
         password: str = Form(...),
         role: str = Form(...),
         province_access: str = Form("All"),
+        force_password_change: bool = Form(False),
         db: Session = Depends(get_db)
 ):
     current_user = get_current_user(request, db)
@@ -800,9 +843,50 @@ async def create_user_route(
         raise HTTPException(status_code=400, detail="Gebruikersnaam bestaat al.")
 
     hashed_pwd = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    new_user = User(username=username, password_hash=hashed_pwd, role=role, province_access=province_access)
+    new_user = User(
+        username=username,
+        password_hash=hashed_pwd,
+        role=role,
+        province_access=province_access,
+        force_password_change=force_password_change
+    )
+
     db.add(new_user)
-    log_action(db, current_user.username, "CREATE", "Gebruiker", username, f"Rol: {role}, Provincie: {province_access}")
+    log_action(db, current_user.username, "CREATE", "Gebruiker", username,
+               f"Rol: {role}, Reset geforceerd: {force_password_change}")
+    db.commit()
+    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/users/edit/{user_id}")
+async def update_user(
+        user_id: int,
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(None),
+        role: str = Form(...),
+        province_access: str = Form("All"),
+        force_password_change: bool = Form(False),
+        db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden.")
+
+    target_user.username = username
+    target_user.role = role
+    target_user.province_access = province_access
+    target_user.force_password_change = force_password_change
+
+    if password and password.strip():
+        target_user.password_hash = bcrypt.hashpw(password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    log_action(db, current_user.username, "UPDATE", "Gebruiker", username,
+               f"Rol: {role}, Reset geforceerd: {force_password_change}")
     db.commit()
     return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -817,36 +901,6 @@ async def edit_user_page(user_id: int, request: Request, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Gebruiker niet gevonden.")
     return templates.TemplateResponse(request=request, name="edit_user.html",
                                       context={"user": current_user, "edit_user": target_user})
-
-
-@app.post("/users/edit/{user_id}")
-async def update_user(
-        user_id: int,
-        request: Request,
-        username: str = Form(...),
-        password: str = Form(None),
-        role: str = Form(...),
-        province_access: str = Form("All"),
-        db: Session = Depends(get_db)
-):
-    current_user = get_current_user(request, db)
-    if not current_user or current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Toegang geweigerd.")
-
-    target_user = db.query(User).filter(User.id == user_id).first()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden.")
-
-    target_user.username = username
-    target_user.role = role
-    target_user.province_access = province_access
-
-    if password and password.strip():
-        target_user.password_hash = bcrypt.hashpw(password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-    log_action(db, current_user.username, "UPDATE", "Gebruiker", username, f"Rol: {role}, Provincie: {province_access}")
-    db.commit()
-    return RedirectResponse(url="/users", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/users/delete/{user_id}")
@@ -881,7 +935,6 @@ async def edit_department_page(request: Request, dept_id: int, db: Session = Dep
                                                "is_zetel": is_zetel})
 
 
-
 @app.post("/departments/delete/{dept_id}")
 async def delete_department(dept_id: int, request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
@@ -914,7 +967,6 @@ async def edit_sit_page(request: Request, sit_id: int, db: Session = Depends(get
     readonly = not has_permission(current_user, sit.province)
     return templates.TemplateResponse(request=request, name="edit_sit.html",
                                       context={"user": current_user, "sit": sit, "readonly": readonly})
-
 
 
 @app.post("/sit-locations/delete/{sit_id}")
@@ -1146,3 +1198,161 @@ async def get_department_markers(dept_id: int, db: Session = Depends(get_db)):
             })
 
     return {"markers": markers}
+
+
+# --- VRIJWILLIGE WACHTWOORD WIJZIGING ---
+@app.get("/profile/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request=request, name="change_password.html",
+                                      context={"user": current_user, "error": None})
+
+
+@app.post("/profile/change-password")
+async def change_password(
+        request: Request,
+        current_password: str = Form(...),
+        new_password: str = Form(...),
+        db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Verifieer het huidige wachtwoord
+    if not bcrypt.checkpw(current_password.encode('utf-8'), current_user.password_hash.encode('utf-8')):
+        return templates.TemplateResponse(
+            request=request, name="change_password.html",
+            context={"user": current_user, "error": "Huidig wachtwoord is onjuist."}
+        )
+
+    # Sla het nieuwe wachtwoord op
+    current_user.password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    # Eventuele force-vlag weghalen
+    if getattr(current_user, 'force_password_change', False):
+        current_user.force_password_change = False
+
+    log_action(db, current_user.username, "UPDATE", "Gebruiker", current_user.username, "Wachtwoord zelf gewijzigd.")
+    db.commit()
+
+    return RedirectResponse(url="/?password_changed=true", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --- GEFORCEERDE WACHTWOORD WIJZIGING (BIJ EERSTE LOGIN) ---
+@app.get("/profile/force-password-change", response_class=HTMLResponse)
+async def force_password_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request=request, name="force_password.html", context={"user": current_user})
+
+
+@app.post("/profile/force-password-change")
+async def process_force_password(request: Request, new_password: str = Form(...), db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    current_user.password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    current_user.force_password_change = False
+
+    log_action(db, current_user.username, "UPDATE", "Gebruiker", current_user.username,
+               "Geforceerde wachtwoord-reset uitgevoerd.")
+    db.commit()
+
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# =========================================================
+# KAART GENERATOR ROUTES
+# =========================================================
+
+@app.get("/maps", response_class=HTMLResponse)
+async def map_management_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    files = glob.glob(os.path.join(OUTPUT_DIR, "*.html"))
+
+    # Maak een nette lijst met bestandsinformatie (nieuwste bovenaan)
+    map_files = []
+    for f in files:
+        stat = os.stat(f)
+        map_files.append({
+            "name": os.path.basename(f),
+            "size_mb": round(stat.st_size / (1024 * 1024), 2),
+            "created": datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+            "timestamp": stat.st_ctime
+        })
+    map_files.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    # Bepaal welke provincies de gebruiker mag genereren
+    if current_user.role in ["admin", "nationaal"]:
+        provinces = ["Vlaanderen", "Antwerpen", "Limburg", "Oost-Vlaanderen", "West-Vlaanderen", "Vlaams-Brabant",
+                     "Brussel"]
+    else:
+        provinces = [current_user.province_access]
+
+    return templates.TemplateResponse(request=request, name="maps.html", context={
+        "user": current_user,
+        "map_files": map_files,
+        "provinces": provinces
+    })
+
+
+@app.get("/maps/preview/{filename}", response_class=HTMLResponse)
+async def preview_map(request: Request, filename: str, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    safe_filename = unquote(filename)
+    file_path = os.path.join(OUTPUT_DIR, safe_filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Kaart niet gevonden.")
+
+    return templates.TemplateResponse(request=request, name="preview_map.html", context={
+        "user": current_user,
+        "filename": safe_filename
+    })
+
+
+@app.get("/maps/download/{filename}")
+async def download_map(filename: str):
+    safe_filename = unquote(filename)
+    file_path = os.path.join(OUTPUT_DIR, safe_filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Kaart niet gevonden.")
+
+    return FileResponse(path=file_path, filename=safe_filename, media_type='text/html')
+
+
+@app.post("/maps/generate")
+async def trigger_map_generation(
+        request: Request,
+        background_tasks: BackgroundTasks,
+        province: str = Form(...),
+        db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    if province != "Vlaanderen" and current_user.role == "provinciaal" and current_user.province_access != province:
+        return HTMLResponse("<h2>Geen rechten voor deze provincie.</h2>", status_code=403)
+
+    # Log de actie
+    log_action(db, current_user.username, "CREATE", "Kaart", f"Kaart {province}", "Generatie gestart op de achtergrond")
+    db.commit()
+
+    # Roep de externe generator.py functie aan via de background_tasks
+    background_tasks.add_task(background_generate_map, province, current_user.username)
+
+    return RedirectResponse(url="/maps?status=generating", status_code=status.HTTP_303_SEE_OTHER)
