@@ -123,6 +123,12 @@ class MapEnhancer(MacroElement):
                 enforceZOrder(map);
                 map.on('layeradd', function(e) { enhanceMap(e.layer); enforceZOrder(map); });
             }
+
+            // Fix voor touch events
+            var layerControls = document.querySelectorAll('.leaflet-control-layers, .leaflet-control-layers-list');
+            layerControls.forEach(function(ctrl) {
+                ctrl.addEventListener('touchmove', function(e) { e.stopPropagation(); }, { passive: true });
+            });
             enforceCheckboxesAndRadios();
         }, 500);
         setTimeout(enforceCheckboxesAndRadios, 1500);
@@ -191,10 +197,11 @@ def background_generate_map(province_filter: str, username: str):
         # 1. Haal data op uit Database
         if prov_name == "Vlaanderen":
             depts = db.query(Department).all()
-            sits = db.query(SitLocation).all()
         else:
             depts = db.query(Department).filter(Department.province == prov_name).all()
-            sits = db.query(SitLocation).filter(SitLocation.province == prov_name).all()
+
+        # SIT locaties halen we ALTIJD allemaal op
+        sits = db.query(SitLocation).all()
 
         if not depts:
             print("[WARN] Geen afdelingen gevonden voor deze provincie.")
@@ -202,9 +209,9 @@ def background_generate_map(province_filter: str, username: str):
 
         dept_ids = [str(d.id) for d in depts]
 
-        # 2. Haal GeoJSON shapes op (Aangepast: 'name as hoofdgemeente' i.p.v. 'parent_name')
+        # 2. Haal GeoJSON shapes op (Nu met 'hoofdgem' exact gemapt op je database schema)
         sql = f"""
-            SELECT id, shape_id, name as deelgemeente, name as hoofdgemeente, department_id, geom 
+            SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente, department_id, geom 
             FROM department_shapes 
             WHERE department_id IN ({','.join(dept_ids)})
         """
@@ -212,16 +219,23 @@ def background_generate_map(province_filter: str, username: str):
         gdf_shapes = gdf_shapes.rename(columns={'geom': 'geometry'}).set_geometry('geometry')
         gdf_shapes.crs = "EPSG:4326"
 
-        # 3. Koppel data
+        # 3. Koppel data en map kolommen correct (Inclusief relaties via region_rel en cluster_rel)
         dept_data = []
         all_services = set()
         for d in depts:
             srvs = [s.name.lower() for s in d.services]
             all_services.update(srvs)
+
+            # Map region en cluster op basis van relaties of fallbacks
+            group_val = d.region_rel.name if d.region_rel else (d.group or "Geen Regio")
+            cluster_val = d.cluster_rel.name if d.cluster_rel else None
+
             dept_data.append({
                 "department_id": d.id,
                 "cluster_name": d.name,
-                "group_name": d.group or "Geen Regio",
+                "group_name": group_val,
+                "working_cluster_name": cluster_val,
+                "province": d.province,
                 "color": d.color or "#d32f2f",
                 "type": d.type,
                 "address": d.address or "Geen adres",
@@ -238,8 +252,12 @@ def background_generate_map(province_filter: str, username: str):
         if not gdf_shapes.empty:
             gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="inner")
 
-            # Topologische Simplificatie
-            print("[GENERATOR] Topologie vereenvoudigen...")
+            # Vang lege hoofdgemeentes op door de deelgemeente in te vullen
+            gdf_selected['hoofdgemeente'] = gdf_selected['hoofdgemeente'].fillna(gdf_selected['deelgemeente'])
+            gdf_selected['mun_label'] = gdf_selected['hoofdgemeente']
+
+            print("[GENERATOR] Topologie vereenvoudigen en afronden...")
+            # 1. Topologische Simplificatie
             gdf_selected = gdf_selected.to_crs(epsg=31370)
             try:
                 topo = tp.Topology(gdf_selected, prequantize=False)
@@ -250,9 +268,23 @@ def background_generate_map(province_filter: str, username: str):
             gdf_selected = gdf_selected.set_geometry('geometry')
             gdf_selected.crs = "EPSG:31370"
             gdf_selected = gdf_selected.to_crs(epsg=4326)
+
+            # 2. Afronden en opschonen
             gdf_selected['geometry'] = gdf_selected.geometry.apply(
                 lambda geom: loads(dumps(geom, rounding_precision=5)) if geom else None)
             gdf_selected['geometry'] = gdf_selected.geometry.buffer(0).make_valid()
+            gdf_selected = gdf_selected.explode(index_parts=False)
+            gdf_selected = gdf_selected[gdf_selected.geometry.type.isin(['Polygon', 'MultiPolygon'])]
+
+            # 3. Enclave/Overlap detectie
+            geometries = gdf_selected.geometry.values
+            contained_mask = np.zeros(len(gdf_selected), dtype=bool)
+            for i, geom_i in enumerate(geometries):
+                for j, geom_j in enumerate(geometries):
+                    if i != j and geom_j.contains(geom_i):
+                        contained_mask[i] = True
+                        break
+            gdf_selected["is_contained"] = contained_mask
 
             default_lat = gdf_selected.geometry.centroid.y.mean()
             default_lon = gdf_selected.geometry.centroid.x.mean()
@@ -305,11 +337,16 @@ def background_generate_map(province_filter: str, username: str):
         # Feature Groups
         fg_afdelingen = folium.FeatureGroup(name="Afdelingen kleur", overlay=True, control=True)
         fg_basis = folium.FeatureGroup(name="Afdelingen kleurloos", overlay=True, control=True, show=False)
+        fg_geen_afd = folium.FeatureGroup(name="Geen afdelingen", overlay=True, control=True, show=False)
+        fg_werkingsgebieden = folium.FeatureGroup(name="Clusters", overlay=True, control=True, show=False)
         fg_regio = folium.FeatureGroup(name="Regio", overlay=True, control=True, show=False)
+        fg_provincies = folium.FeatureGroup(name="Provinciegrenzen", overlay=True, control=True, show=True)
+
         fg_locaties = folium.FeatureGroup(name="Afdelingslocaties", overlay=True, control=True, show=True)
         fg_vrijwilligerskorps = folium.FeatureGroup(name="Vrijwilligerskorpsen", overlay=True, control=True, show=False)
         fg_ziekenwagens = folium.FeatureGroup(name="Ziekenwagen", overlay=True, control=True, show=False)
         fg_sit = folium.FeatureGroup(name="SIT", overlay=True, control=True, show=False)
+
         fg_geen_labels = folium.FeatureGroup(name="Geen labels", overlay=True, control=True, show=True)
         fg_label_gem = folium.FeatureGroup(name="Gemeente Labels", overlay=True, control=True, show=False)
         fg_label_afd = folium.FeatureGroup(name="Afdeling Labels", overlay=True, control=True, show=False)
@@ -355,12 +392,14 @@ def background_generate_map(province_filter: str, username: str):
                 website_line = "" if is_zetel else f"<b>Website:</b> <a href='{row['website_url']}' target='_blank' class='rk-popup-link'>{row['website_url']}</a><br>"
                 volunteer_section = "" if is_zetel else f'<div class="rk-popup-btn-container"><a href="{volunteer_url}" target="_blank" class="rk-popup-btn">Word vrijwilliger</a></div>'
 
+                is_transparent = row['is_transparent'] or row["is_contained"]
+
                 html_content = f"""
                 <div class="rk-popup-container">
                     <h4 class="rk-popup-title">{title_text}</h4>
                     {icons_html}
                     <div class="rk-popup-body">
-                        <b>Gemeente:</b> {row['hoofdgemeente']}<br><b>Deelgemeente:</b> {row['deelgemeente']}
+                        <b>Gemeente:</b> {row['mun_label']}<br><b>Deelgemeente:</b> {row['deelgemeente']}
                     </div>
                     <div class="rk-popup-body">
                         <b>Adres:</b> {row['address']}<br><b>Email:</b> <a href="mailto:{row['email']}" class="rk-popup-link">{row['email']}</a><br>
@@ -370,9 +409,10 @@ def background_generate_map(province_filter: str, username: str):
                 </div>
                 """
 
+                # Deelgemeente-grenzen: Dashed
                 folium.GeoJson(
                     row.geometry,
-                    style_function=lambda x, trans=row['is_transparent'], col=row['color']: {
+                    style_function=lambda x, trans=is_transparent, col=row['color']: {
                         'fillColor': 'white' if trans else col,
                         'color': '#444444',
                         'weight': 1.2,
@@ -385,16 +425,55 @@ def background_generate_map(province_filter: str, username: str):
                     popup=folium.Popup(html_content, max_width=350)
                 ).add_to(fg_afdelingen)
 
-            # Kleurloos
+            # Volle lijn Hoofdgemeenten
+            mun_dissolved = gdf_selected.dissolve(by='mun_label')
+            folium.GeoJson(mun_dissolved,
+                           style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 2.0,
+                                                     'fillOpacity': 0, 'className': 'layer-afdelingen'},
+                           interactive=False).add_to(fg_afdelingen)
+
+            # Buitenranden fix: Afdelingen (cluster_dissolved) een extra stevige buitenrand geven
             cluster_dissolved = gdf_selected.dissolve(by='cluster_name')
             folium.GeoJson(cluster_dissolved,
-                           style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 2.5,
+                           style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 2.8,
                                                      'fillOpacity': 0, 'className': 'layer-afdelingen'},
-                           interactive=False).add_to(fg_basis)
+                           interactive=False).add_to(fg_afdelingen)
+
+            # Klikbare kleurloze shapes in fg_basis
             folium.GeoJson(cluster_dissolved,
                            style_function=lambda x: {'fillColor': '#ffffff', 'color': 'none', 'weight': 0,
                                                      'fillOpacity': 0.01, 'interactive': True,
                                                      'className': 'kleurloos-shape layer-afdelingen'}).add_to(fg_basis)
+            folium.GeoJson(cluster_dissolved,
+                           style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 2.5,
+                                                     'fillOpacity': 0, 'className': 'layer-afdelingen'},
+                           interactive=False).add_to(fg_basis)
+
+            # Clusters (Werkingsgebieden)
+            if 'working_cluster_name' in gdf_selected.columns:
+                wc_valid = gdf_selected[
+                    gdf_selected['working_cluster_name'].notna() & (gdf_selected['working_cluster_name'] != '')]
+                if not wc_valid.empty:
+                    wc_dissolved = wc_valid.dissolve(by='working_cluster_name')
+                    for wc_name, row in wc_dissolved.iterrows():
+                        folium.GeoJson(
+                            gpd.GeoDataFrame({'geometry': [row.geometry]}, crs=gdf_selected.crs),
+                            style_function=lambda x: {'fillOpacity': 0, 'color': '#0066FF', 'weight': 4, 'opacity': 0.9,
+                                                      'className': 'layer-clusters'},
+                            interactive=False, name=str(wc_name)
+                        ).add_to(fg_werkingsgebieden)
+
+            # Provincies filterlaag
+            if prov_name == 'Vlaanderen':
+                prov_valid = gdf_selected[gdf_selected['province'].notna() & (gdf_selected['province'] != 'Onbekend')]
+                if not prov_valid.empty:
+                    prov_dissolved = prov_valid.dissolve(by='province')
+                    folium.GeoJson(
+                        prov_dissolved,
+                        style_function=lambda x: {'fillColor': 'none', 'color': '#2F4F4F', 'weight': 5.5,
+                                                  'opacity': 0.9, 'className': 'layer-province'},
+                        interactive=False
+                    ).add_to(fg_provincies)
 
             # Regio (Gedeelde Bounding Box)
             regio_proj = gdf_selected.to_crs(epsg=31370).dissolve(by='group_name')
@@ -448,8 +527,8 @@ def background_generate_map(province_filter: str, username: str):
                         html=f'<div style="{base_style} font-size: 22px; font-weight: bold; color: #333; text-shadow: 2px 2px 4px #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">{str(gname).upper()}</div>')
                 ).add_to(fg_regio)
 
-            # Text Labels Gemeente & Afdeling
-            for name, row in gdf_selected.to_crs(epsg=31370).dissolve(by='hoofdgemeente').to_crs(epsg=4326).iterrows():
+            # Text Labels Gemeente, Afdeling, Cluster
+            for name, row in gdf_selected.to_crs(epsg=31370).dissolve(by='mun_label').to_crs(epsg=4326).iterrows():
                 folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
                     html=f'<div style="{base_style} font-size: 11px; font-weight: bold; color: #333; text-shadow: 2px 2px 3px #fff;">{name}</div>')).add_to(
                     fg_label_gem)
@@ -458,6 +537,16 @@ def background_generate_map(province_filter: str, username: str):
                 folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
                     html=f'<div style="{base_style} font-size: 12px; font-weight: bold; color: #d32f2f; text-shadow: 2px 2px 3px #fff;">{name}</div>')).add_to(
                     fg_label_afd)
+
+            if 'working_cluster_name' in gdf_selected.columns:
+                wc_valid = gdf_selected[
+                    gdf_selected['working_cluster_name'].notna() & (gdf_selected['working_cluster_name'] != '')]
+                if not wc_valid.empty:
+                    wc_labels = wc_valid.to_crs(epsg=31370).dissolve(by='working_cluster_name').to_crs(epsg=4326)
+                    for name, row in wc_labels.iterrows():
+                        folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
+                            html=f'<div style="{base_style} font-size: 14px; font-weight: bold; color: #0066FF; text-shadow: 2px 2px 4px #fff;">{name}</div>')).add_to(
+                            fg_label_sam)
 
         # 6. Locaties, Voertuigen & Patronen (Markers)
         for dept in depts:
@@ -481,18 +570,38 @@ def background_generate_map(province_filter: str, username: str):
                     popup=folium.Popup(loc_html, max_width=300)
                 ).add_to(fg_locaties)
 
-            # Ziekenwagens
+            # Ziekenwagens (Gegroepeerd per adres met badge)
+            grouped_zws = {}
             for v in dept.vehicles:
-                v_lat, v_lon = v.lat, v.lon
-                if not v_lat: v_lat, v_lon = final_lat, final_lon
+                v_lat = v.lat if v.lat else final_lat
+                v_lon = v.lon if v.lon else final_lon
+                v_addr = v.address if v.address else dept.address
+
                 if v_lat and v_lon:
-                    v_html = f"<div style='position: relative; width: 30px; height: 42px; text-align: center; margin-left: -15px; margin-top: -42px;'><i class='fa fa-map-marker' style='font-size: 42px; color: #8B0000; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);'></i><i class='fa fa-ambulance' style='font-size: 16px; color: white; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);'></i></div>"
-                    folium.Marker(
-                        location=[v_lat, v_lon],
-                        icon=folium.DivIcon(html=v_html, class_name="empty"),
-                        tooltip=f"Voertuig: {v.name} ({dept.name})",
-                        popup=f"<b>{title_text}</b><br>Voertuig: {v.name}<br>Vlootnr: {v.fleet_nr or 'Onbekend'}<br>Adres: {v.address or dept.address}"
-                    ).add_to(fg_ziekenwagens)
+                    group_key = (v_addr, v_lat, v_lon)
+                    if group_key not in grouped_zws: grouped_zws[group_key] = []
+                    grouped_zws[group_key].append(v)
+
+            for (zw_addr, z_lat, z_lon), vehicles in grouped_zws.items():
+                vehicles_html = "".join([
+                                            f"<li style='margin-bottom: 3px;'><b>{v.name}</b> <span style='color: #666; font-size: 11px;'>(Vlootnr: {v.fleet_nr or 'Onbekend'})</span></li>"
+                                            for v in vehicles])
+                zw_popup_html = f"<div style='font-family: sans-serif; min-width: 200px;'><h4 style='margin: 0 0 5px 0; color: darkred; border-bottom: 1px solid darkred;'>{title_text}</h4><div style='font-size: 13px;'><b>Locatie:</b> {zw_addr}<ul style='margin-top: 5px; padding-left: 20px;'>{vehicles_html}</ul></div></div>"
+
+                count = len(vehicles)
+                badge_html = f"<div style='position: absolute; bottom: 8px; right: -5px; background-color: #1976d2; color: white; border-radius: 50%; width: 18px; height: 18px; line-height: 18px; text-align: center; font-size: 11px; font-weight: bold; border: 2px solid white; box-shadow: 1px 1px 2px rgba(0,0,0,0.3);'>{count}</div>" if count > 1 else ""
+
+                is_main_location = (z_lat == final_lat and z_lon == final_lon)
+                offset = 0.0005 if is_main_location else 0
+
+                html_icon = f"<div style='position: relative; width: 30px; height: 42px; text-align: center; margin-left: -15px; margin-top: -42px;'><i class='fa fa-map-marker' style='font-size: 42px; color: #8B0000; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);'></i><i class='fa fa-ambulance' style='font-size: 16px; color: white; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);'></i>{badge_html}</div>"
+
+                folium.Marker(
+                    location=[z_lat, z_lon + offset],
+                    icon=folium.DivIcon(html=html_icon, class_name="empty"),
+                    tooltip=f"Ziekenwagen(s): {title_text}",
+                    popup=folium.Popup(zw_popup_html, max_width=300)
+                ).add_to(fg_ziekenwagens)
 
             # Patronen (Jeugd / Zorgbib / etc)
             if not gdf_selected.empty:
@@ -534,27 +643,49 @@ def background_generate_map(province_filter: str, username: str):
                                        interactive=False, tooltip=f"Vrijwilligerskorps Actief: {dept.name}").add_to(
                             fg_vrijwilligerskorps)
 
-        # 7. SIT Locaties
+        # 7. SIT Locaties (Robuust met voertuigen)
         for sit in sits:
             if sit.lat and sit.lon:
-                header_color = "#800080" if 'med' in sit.type.lower() and 'log' in sit.type.lower() else (
-                    "#d32f2f" if 'med' in sit.type.lower() else "#1976d2")
-                bg_style = "background: linear-gradient(90deg, #d32f2f 50%, #1976d2 50%);" if 'med' in sit.type.lower() and 'log' in sit.type.lower() else f"background-color: {header_color};"
+                sit_type = str(sit.type) if sit.type else 'SIT'
+                sit_name = str(sit.name) if sit.name else 'Onbekend'
+                sit_address = str(sit.address) if sit.address else 'Geen adres'
+
+                header_color = "#800080" if 'med' in sit_type.lower() and 'log' in sit_type.lower() else (
+                    "#d32f2f" if 'med' in sit_type.lower() else "#1976d2")
+                bg_style = "background: linear-gradient(90deg, #d32f2f 50%, #1976d2 50%);" if 'med' in sit_type.lower() and 'log' in sit_type.lower() else f"background-color: {header_color};"
                 sit_pin = f"<div style='position: absolute; transform: translate(-50%, -100%);'><div style='{bg_style} color: white; border: 2px solid white; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: bold; box-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>SIT</div><div style='width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid {header_color}; margin: 0 auto;'></div></div>"
+
+                # Voertuigen toevoegen aan pop-up indien aanwezig
+                vehicles_html = ""
+                if hasattr(sit, 'sit_vehicles') and sit.sit_vehicles:
+                    vehicles_html = "<ul style='margin-top: 5px; padding-left: 20px;'>"
+                    for v in sit.sit_vehicles:
+                        vehicles_html += f"<li style='margin-bottom: 3px;'><b>{v.name}</b> <span style='color: #666; font-size: 11px;'>(Vlootnr: {v.fleet_nr or 'Onbekend'})</span></li>"
+                    vehicles_html += "</ul>"
+
+                sit_popup_html = f"""
+                <div style='font-family: sans-serif; min-width: 200px;'>
+                    <h4 style='margin: 0 0 5px 0; color: {header_color}; border-bottom: 1px solid {header_color}; padding-bottom: 5px;'>{sit_name}</h4>
+                    <div style='font-size: 13px;'>
+                        <b>Type:</b> {sit_type}<br><b>Adres:</b> {sit_address}
+                        {vehicles_html}
+                    </div>
+                </div>
+                """
                 folium.Marker(
                     location=[sit.lat, sit.lon],
                     icon=folium.DivIcon(html=sit_pin, class_name="empty"),
-                    tooltip=f"{sit.type}: {sit.name}",
-                    popup=f"<b>{sit.name}</b><br>Adres: {sit.address}"
+                    tooltip=f"{sit_type}: {sit_name}",
+                    popup=folium.Popup(sit_popup_html, max_width=300)
                 ).add_to(fg_sit)
 
         # 8. ZOEKFUNCTIE (Geïntegreerd)
         if not gdf_selected.empty:
             search_features = []
             for idx, row in gdf_selected.iterrows():
-                display_name = f"{row['deelgemeente']} (Deelgemeente van {row['hoofdgemeente']})"
+                display_name = f"{row['deelgemeente']} (Deelgemeente van {row['mun_label']})"
                 search_features.append({"search_name": display_name, "geometry": row.geometry})
-            for name, group in gdf_selected.groupby('hoofdgemeente'):
+            for name, group in gdf_selected.groupby('mun_label'):
                 search_features.append(
                     {"search_name": f"{name} (Hoofdgemeente)", "geometry": group.geometry.union_all()})
             for name, group in gdf_selected.groupby('cluster_name'):
@@ -576,24 +707,66 @@ def background_generate_map(province_filter: str, username: str):
             custom_search_js = f"""
             <script>
             document.addEventListener("DOMContentLoaded", function() {{
+                var rk_search_timeout_id = null;
+                var rk_found_layer = null;
+
                 setTimeout(function() {{
                     var searchInstance = window["{search_var_name}"] || (typeof {search_var_name} !== 'undefined' ? {search_var_name} : null);
+
                     if (searchInstance) {{
-                        var rk_search_timeout_id = null; var rk_found_layer = null;
                         searchInstance.options.initial = false;
-                        function fullClear() {{
-                            if (rk_found_layer) {{ if (typeof rk_found_layer.setStyle === 'function') {{ rk_found_layer.setStyle({{ fillOpacity: 0, opacity: 0, weight: 0, color: 'transparent' }}); }} rk_found_layer = null; }}
-                            if (typeof searchInstance._clear === 'function') {{ searchInstance._clear(); }}
+                        function resetOldLayer() {{
+                            if (rk_found_layer) {{
+                                if (typeof rk_found_layer.setStyle === 'function') {{
+                                    rk_found_layer.setStyle({{ fillOpacity: 0, opacity: 0, weight: 0, color: 'transparent' }});
+                                }}
+                                rk_found_layer = null;
+                            }}
                         }}
+
+                        function fullClear() {{
+                            resetOldLayer();
+                            if (typeof searchInstance._clear === 'function') {{
+                                searchInstance._clear();
+                            }}
+                        }}
+
                         searchInstance.on('search:locationfound', function(e) {{
-                            if (rk_search_timeout_id !== null) {{ clearTimeout(rk_search_timeout_id); }}
-                            if (rk_found_layer) {{ if (typeof rk_found_layer.setStyle === 'function') {{ rk_found_layer.setStyle({{ fillOpacity: 0, opacity: 0, weight: 0, color: 'transparent' }}); }} }}
+                            if (rk_search_timeout_id !== null) {{
+                                clearTimeout(rk_search_timeout_id);
+                                rk_search_timeout_id = null;
+                            }}
+                            resetOldLayer();
                             rk_found_layer = e.layer;
-                            rk_search_timeout_id = setTimeout(function() {{ fullClear(); }}, 30000);
+                            rk_search_timeout_id = setTimeout(function() {{
+                                fullClear();
+                                rk_search_timeout_id = null;
+                            }}, 30000);
                         }});
-                        searchInstance.on('search:expanded', fullClear);
-                        searchInstance.on('search:collapsed', fullClear);
-                        searchInstance.on('search:cancel', fullClear);
+
+                        searchInstance.on('search:expanded', function(e) {{
+                            if (rk_search_timeout_id !== null) {{
+                                clearTimeout(rk_search_timeout_id);
+                                rk_search_timeout_id = null;
+                            }}
+                            fullClear();
+                        }});
+
+                        searchInstance.on('search:collapsed', function(e) {{
+                            if (rk_search_timeout_id !== null) {{
+                                clearTimeout(rk_search_timeout_id);
+                                rk_search_timeout_id = null;
+                            }}
+                            fullClear();
+                        }});
+
+                        searchInstance.on('search:cancel', function(e) {{
+                            if (rk_search_timeout_id !== null) {{
+                                clearTimeout(rk_search_timeout_id);
+                                rk_search_timeout_id = null;
+                            }}
+                            fullClear();
+                        }});
                     }}
                 }}, 800);
             }});
@@ -602,9 +775,11 @@ def background_generate_map(province_filter: str, username: str):
             m.get_root().html.add_child(Element(custom_search_js))
 
         # 9. Lagen Toevoegen & Menu genereren
-        layers = [fg_afdelingen, fg_basis, fg_regio, fg_locaties, fg_vrijwilligerskorps, fg_ziekenwagens, fg_sit,
-                  fg_jeugd, fg_zorgbib, fg_brugfiguren, fg_internationaal, fg_uitleen, fg_geen_labels, fg_label_gem,
-                  fg_label_afd, fg_label_sam]
+        layers = [
+            fg_afdelingen, fg_basis, fg_geen_afd, fg_werkingsgebieden, fg_regio, fg_provincies,
+            fg_locaties, fg_vrijwilligerskorps, fg_ziekenwagens, fg_sit, fg_jeugd, fg_zorgbib,
+            fg_brugfiguren, fg_internationaal, fg_uitleen, fg_geen_labels, fg_label_gem, fg_label_afd, fg_label_sam
+        ]
         [fg.add_to(m) for fg in layers]
 
         MapEnhancer().add_to(m)
@@ -612,13 +787,15 @@ def background_generate_map(province_filter: str, username: str):
 
         groups_dict = {
             'Basiskaart': [tl_licht, tl_osm, tl_geen],
-            'Afdelingen': [fg_afdelingen, fg_basis],
+            'Afdelingen': [fg_afdelingen, fg_basis, fg_geen_afd],
             'Vrijwilligerskorpsen': [fg_vrijwilligerskorps],
-            'Overlay': [fg_locaties, fg_regio],
+            'Overlay': [fg_locaties, fg_werkingsgebieden, fg_regio],
             'Disciplines': [fg_ziekenwagens, fg_sit, fg_jeugd, fg_zorgbib, fg_brugfiguren, fg_internationaal,
                             fg_uitleen],
             'Tekst Labels': [fg_geen_labels, fg_label_gem, fg_label_afd, fg_label_sam]
         }
+        if prov_name == 'Vlaanderen':
+            groups_dict['Overlay'].append(fg_provincies)
 
         control = GroupedLayerControl(groups=groups_dict, collapsed=False)
         control.options = {'exclusiveGroups': ['Basiskaart', 'Afdelingen', 'Tekst Labels'], 'collapsed': False}
@@ -681,6 +858,15 @@ def background_generate_map(province_filter: str, username: str):
                 if (wrapper) {{
                     L.DomEvent.disableClickPropagation(wrapper);
                     L.DomEvent.disableScrollPropagation(wrapper);
+                }}
+
+                // Extra check voor mobiel
+                if (window.innerWidth < 850 || window.innerHeight < 600) {{
+                    var legendContent = document.getElementById('rk-legend-content');
+                    if (legendContent) {{
+                        legendContent.style.display = 'none';
+                        document.getElementById('rk-legend-toggle').innerText = '+';
+                    }}
                 }}
             }}, 500);
         </script>
