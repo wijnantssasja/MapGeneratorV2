@@ -1,8 +1,10 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, Table, Text, Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from datetime import datetime
 import enum
 from geoalchemy2 import Geometry  # <-- Deze moet bovenaan staan!
+from datetime import datetime, timezone
 
 SQLALCHEMY_DATABASE_URL = "postgresql://admin:secretpassword@192.168.2.10:5432/rodekruis_mapgen"
 # SQLACLHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpassword@db:5432/rodekruis_mapgen")

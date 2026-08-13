@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 import bcrypt
-from database import AuditLog, Municipality
+from database import AuditLog, Municipality, CoordinateCache
 from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
 from types import SimpleNamespace
 import os
@@ -143,13 +143,17 @@ def resolve_address(address_str):
 # ---------------------------------------------------------
 # AUTHENTICATION ROUTES
 # ---------------------------------------------------------
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, db: Session = Depends(get_db)):
+    # Controleer of de gebruiker écht bestaat in de huidige database
     current_user = get_current_user(request, db)
     if current_user:
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
+    # Als de database de gebruiker niet kent, gooi de oude cookie weg
     request.session.clear()
+
     return templates.TemplateResponse(request=request, name="login.html", context={"error": None})
 
 
@@ -157,6 +161,7 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
 async def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
 
+    # Verify user exists and password matches
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
         return templates.TemplateResponse(
             request=request,
@@ -164,7 +169,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
             context={"error": "Ongeldige gebruikersnaam of wachtwoord."}
         )
 
-    # Zet de sessie variabelen en de starttijd
+    # Set session data
     request.session["username"] = user.username
     request.session["role"] = user.role
     request.session["province_access"] = user.province_access
@@ -493,7 +498,6 @@ async def create_sit(request: Request, db: Session = Depends(get_db)):
     log_action(db, current_user.username, "CREATE", "SIT-Locatie", new_sit.name, "Nieuwe SIT aangemaakt.")
     db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
-
 
 @app.post("/sit-locations/edit/{sit_id}")
 async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db)):
@@ -1125,33 +1129,62 @@ async def trigger_map_generation(request: Request, db: Session = Depends(get_db)
 
 @app.get("/api/departments/{dept_id}/markers")
 async def get_department_markers(dept_id: int, db: Session = Depends(get_db)):
-    """Haalt de opgeslagen coördinaten op van de hoofdlocatie en voertuigen."""
+    """Haalt coördinaten op. Prioriteit: Manueel -> Cache -> API Resolutie -> Centroid"""
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Afdeling niet gevonden")
 
     markers = []
 
-    # 1. Hoofdlocatie van de afdeling
-    if dept.lat and dept.lon:
+    # Hulpfunctie om een adres via de cache (of live) op te halen
+    def get_coords_for_address(addr_str):
+        if not addr_str: return None, None
+        addr_clean = addr_str.strip()
+        # Check Cache
+        cached = db.query(CoordinateCache).filter(CoordinateCache.address == addr_clean).first()
+        if cached:
+            return cached.lat, cached.lon
+
+        # Niet in cache? API aanroepen en cachen!
+        lat, lon = resolve_address(addr_clean)  # Jouw resolve_address functie (met de 1.1s delay)
+        if lat and lon:
+            new_cache = CoordinateCache(address=addr_clean, lat=lat, lon=lon)
+            db.add(new_cache)
+            db.commit()
+            return lat, lon
+        return None, None
+
+    # 1. Bepaal Hoofdlocatie
+    final_dept_lat, final_dept_lon = dept.lat, dept.lon  # Eerst manuele input checken
+
+    if not final_dept_lat or not final_dept_lon:
+        final_dept_lat, final_dept_lon = get_coords_for_address(dept.address)
+
+    if not final_dept_lat or not final_dept_lon:
+        # Ruimtelijke fallback als niets werkt
+        sql = "SELECT ST_X(ST_Centroid(ST_Union(geom::geometry))) as lon, ST_Y(ST_Centroid(ST_Union(geom::geometry))) as lat FROM department_shapes WHERE department_id = :dept_id"
+        result = db.execute(text(sql), {"dept_id": dept.id}).fetchone()
+        if result and result.lat and result.lon:
+            final_dept_lat, final_dept_lon = result.lat, result.lon
+
+    if final_dept_lat and final_dept_lon:
         markers.append({
-            "type": "main",
-            "name": dept.name,
-            "address": dept.address or "Geen adres",
-            "lat": dept.lat,
-            "lon": dept.lon
+            "type": "main", "name": dept.name, "address": dept.address or "Geen adres",
+            "lat": final_dept_lat, "lon": final_dept_lon
         })
 
-    # 2. Ziekenwagens en voertuigen
+    # 2. Voertuigen
     for vehicle in dept.vehicles:
-        if vehicle.lat and vehicle.lon:
+        v_lat, v_lon = vehicle.lat, vehicle.lon  # Manuele input
+        if not v_lat or not v_lon:
+            v_lat, v_lon = get_coords_for_address(vehicle.address)
+        if not v_lat or not v_lon:
+            v_lat, v_lon = final_dept_lat, final_dept_lon  # Fallback naar afdeling
+
+        if v_lat and v_lon:
             markers.append({
-                "type": "vehicle",
-                "name": vehicle.name,
-                "fleet_nr": vehicle.fleet_nr or "Onbekend",
-                "address": vehicle.address or "Geen adres",
-                "lat": vehicle.lat,
-                "lon": vehicle.lon
+                "type": "vehicle", "name": vehicle.name, "fleet_nr": vehicle.fleet_nr or "Onbekend",
+                "address": vehicle.address or "Geen adres", "lat": v_lat, "lon": v_lon
             })
 
     return {"markers": markers}
