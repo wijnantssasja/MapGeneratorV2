@@ -52,13 +52,11 @@ def map_shapes_in_db():
     gdf["name_lower"] = gdf["deelgemeente"].fillna("").astype(str).str.strip().str.lower()
     gdf["pname_lower"] = gdf["hoofdgemeente"].fillna("").astype(str).str.strip().str.lower()
 
-    # Haal afdelingen en mappings op
+    # Haal afdelingen en leden op (Voor kandidaten-matching)
     departments = db.query(Department).all()
     dept_map = {d.name.strip().lower(): d.id for d in departments}
 
     mun_to_dept = {}
-    dept_geometries = {d.id: [] for d in departments}
-
     for dept in departments:
         for member in dept.members:
             m_lower = member.name.strip().lower()
@@ -66,109 +64,124 @@ def map_shapes_in_db():
                 mun_to_dept[m_lower] = []
             mun_to_dept[m_lower].append(dept.id)
 
+    def get_candidates(n_lower, p_lower):
+        return list(set(mun_to_dept.get(n_lower, []) + mun_to_dept.get(p_lower, [])))
+
+    unassigned_indices = list(gdf.index)
     updates = []
-    shapes_met_duplicaten = []
+    dept_geometries = {d.id: [] for d in departments}
 
-    print("Stap 1: Loop 1 - Manuele assignments en Pure matches (Zekerheden)...")
-
+    print("Stap 1: Loop 0 - Manuele Assignments...")
     # ==========================================
-    # LOOP 1: ZEKERHEDEN (Manueel + Unieke Match)
+    # LOOP 0: MANUELE ASSIGNMENTS
     # ==========================================
-    for idx, row in gdf.iterrows():
-        db_id = row['id']
+    for idx in unassigned_indices[:]:
+        row = gdf.loc[idx]
         shape_id = str(row.get("shape_id", "")).replace(".0", "")
+        n_lower = row.get("name_lower", "")
+
+        target = MANUAL_ASSIGNMENTS.get(shape_id, MANUAL_ASSIGNMENTS.get(n_lower))
+        if target and target.lower() in dept_map:
+            d_id = dept_map[target.lower()]
+            updates.append({"id": row['id'], "department_id": d_id, "match_method": MatchMethodEnum.MANUELE_OVERRIDE})
+            dept_geometries[d_id].append(row['geom'])
+            unassigned_indices.remove(idx)
+
+    print("Stap 2: Loop 1 - Pure Matches (Unieke shapes zonder conflicten)...")
+    # ==========================================
+    # LOOP 1: PURE MATCHES
+    # ==========================================
+    # Tellen hoe vaak een deelgemeente voorkomt in de nog niet toegewezen dataset (om duplicaten zoals Hamme te spotten)
+    name_counts = gdf.loc[unassigned_indices, "name_lower"].value_counts().to_dict()
+
+    for idx in unassigned_indices[:]:
+        row = gdf.loc[idx]
         n_lower = row.get("name_lower", "")
         p_lower = row.get("pname_lower", "")
 
-        matched_dept_id = None
-        match_method = None
+        cands = get_candidates(n_lower, p_lower)
 
-        # A. Manuele toewijzingen primeren
-        if shape_id in MANUAL_ASSIGNMENTS or n_lower in MANUAL_ASSIGNMENTS:
-            manual_target = MANUAL_ASSIGNMENTS.get(shape_id, MANUAL_ASSIGNMENTS.get(n_lower))
-            if manual_target and manual_target.lower() in dept_map:
-                matched_dept_id = dept_map[manual_target.lower()]
-                match_method = MatchMethodEnum.MANUELE_OVERRIDE
+        # Een pure match is: exact 1 kandidaat afdeling, EN de naam van de shape is uniek in de resterende lijst.
+        is_unique_shape = (name_counts.get(n_lower, 0) == 1)
 
-        # B. Pure matches zoeken (Geen duplicaten)
-        if not matched_dept_id:
-            candidates_deel = mun_to_dept.get(n_lower, [])
-            candidates_hoofd = mun_to_dept.get(p_lower, [])
-            all_candidates = list(set(candidates_deel + candidates_hoofd))
+        if len(cands) == 1 and is_unique_shape:
+            d_id = cands[0]
+            m_method = MatchMethodEnum.NAAM_MATCH if d_id in mun_to_dept.get(n_lower,
+                                                                             []) else MatchMethodEnum.HOOFDGEMEENTE_MATCH
+            updates.append({"id": row['id'], "department_id": d_id, "match_method": m_method})
+            dept_geometries[d_id].append(row['geom'])
+            unassigned_indices.remove(idx)
 
-            if len(all_candidates) == 1:
-                # Exact 1 kandidaat, dus 100% zekerheid
-                matched_dept_id = all_candidates[0]
-                match_method = MatchMethodEnum.NAAM_MATCH if matched_dept_id in candidates_deel else MatchMethodEnum.HOOFDGEMEENTE_MATCH
-            elif len(all_candidates) > 1:
-                # Duplicaat gedetecteerd! Toevoegen aan wachtlijst voor Loop 2.
-                shapes_met_duplicaten.append((row, all_candidates, candidates_deel))
-                continue
-            else:
-                # Helemaal geen kandidaat gevonden (blijft leeg)
-                updates.append({"id": db_id, "department_id": None, "match_method": None})
-                continue
+    # Voeg de verzamelde polygonen per afdeling samen voor snelle/zuivere afstandsmeting in Loop 2
+    dept_combined_geom = {d_id: unary_union(geoms) if geoms else None for d_id, geoms in dept_geometries.items()}
 
-        # Toewijzen en geometrie opslaan voor de afstandsmeting in Loop 2
-        updates.append({
-            "id": db_id,
-            "department_id": matched_dept_id,
-            "match_method": match_method
-        })
-        dept_geometries[matched_dept_id].append(row['geom'])
-
-    print(f" -> {len(updates)} polygonen zonder conflict toegewezen.")
-
-    # Bereid de geometrieën voor (samenvoegen per afdeling voor snellere/exactere afstandsberekening)
-    dept_combined_geom = {}
-    for d_id, geoms in dept_geometries.items():
-        dept_combined_geom[d_id] = unary_union(geoms) if geoms else None
-
-    print(f"Stap 2: Loop 2 - Ruimtelijke analyse voor {len(shapes_met_duplicaten)} duplicaten...")
-    spatial_updates = 0
+    print(
+        f" -> Loop 0 & 1 klaar. Nog {len(unassigned_indices)} onduidelijke/duplicaat polygonen te verwerken in Loop 2.")
+    print("Stap 3: Loop 2 - Ruimtelijke analyse voor duplicaten...")
 
     # ==========================================
     # LOOP 2: DUPLICATEN (Ruimtelijke afstandsmeting)
     # ==========================================
-    for row, all_candidates, candidates_deel in shapes_met_duplicaten:
-        db_id = row['id']
-        geom = row['geom']
+    spatial_updates = 0
 
-        best_candidate = None
-        min_dist = float('inf')
+    # Groepeer de nog overgebleven shapes per naam
+    unassigned_by_name = {}
+    for idx in unassigned_indices:
+        n = gdf.loc[idx, "name_lower"]
+        if n not in unassigned_by_name:
+            unassigned_by_name[n] = []
+        unassigned_by_name[n].append(idx)
 
-        # Meet afstand van dit conflictgebied tot de REEDS TOEGEWEZEN polygonen van elke kandidaat
-        for cand_id in all_candidates:
-            cand_geom = dept_combined_geom.get(cand_id)
-            if cand_geom is not None and not cand_geom.is_empty:
-                dist = geom.distance(cand_geom)
-                if dist < min_dist:
-                    min_dist = dist
-                    best_candidate = cand_id
+    for name, indices in unassigned_by_name.items():
+        if not indices: continue
 
-        if best_candidate is not None:
-            # We hebben de dichtstbijzijnde afdeling gevonden
-            matched_dept_id = best_candidate
-            match_method = MatchMethodEnum.RUIMTELIJKE_AFSTAND
+        # Bepaal alle afdelingen die één van de shapes in deze groep willen hebben
+        all_wanting_depts = set()
+        for idx in indices:
+            row = gdf.loc[idx]
+            all_wanting_depts.update(get_candidates(row.get("name_lower", ""), row.get("pname_lower", "")))
+
+        # Zolang er shapes in deze groep over zijn EN afdelingen die ze willen en kunnen claimen
+        while indices:
+            # We kijken enkel naar afdelingen die effectief al polygonen (geometry) bezitten om van te meten
+            active_depts = [d for d in all_wanting_depts if dept_combined_geom.get(d) is not None]
+            if not active_depts:
+                break  # Geen enkele eisende afdeling heeft geometrie. Berekenen is onmogelijk.
+
+            # Bereken ALLE afstanden tussen de actieve afdelingen en de resterende shapes in deze naam-groep
+            distances = []
+            for d_id in active_depts:
+                cand_geom = dept_combined_geom[d_id]
+                for idx in indices:
+                    dist = gdf.loc[idx, 'geom'].distance(cand_geom)
+                    distances.append((dist, d_id, idx))
+
+            if not distances:
+                break
+
+            # Sorteer en pak de absolute dichtstbijzijnde match (De afdeling claimt zijn specifieke stukje)
+            distances.sort(key=lambda x: x[0])
+            best_dist, best_d_id, best_idx = distances[0]
+
+            # Toewijzen!
+            row = gdf.loc[best_idx]
+            updates.append(
+                {"id": row['id'], "department_id": best_d_id, "match_method": MatchMethodEnum.RUIMTELIJKE_AFSTAND})
             spatial_updates += 1
-        else:
-            # Uitzonderlijke Fallback: Álle kandidaten hebben momenteel nog 0 toegewezen polygonen.
-            # We wijzen hem toe aan de eerste de beste (prioriteit deelgemeente).
-            matched_dept_id = all_candidates[0]
-            match_method = MatchMethodEnum.NAAM_MATCH if matched_dept_id in candidates_deel else MatchMethodEnum.HOOFDGEMEENTE_MATCH
 
-        updates.append({
-            "id": db_id,
-            "department_id": matched_dept_id,
-            "match_method": match_method
-        })
+            # Voeg direct toe aan de combined geometry van de winnende afdeling (voor evt. volgende berekeningen)
+            dept_combined_geom[best_d_id] = dept_combined_geom[best_d_id].union(row['geom'])
 
-        # Zeer belangrijk: Voeg deze zojuist toegewezen shape onmiddellijk toe aan
-        # dept_combined_geom, zodat volgende duplicaten hier óók hun afstand tegen kunnen meten.
-        if dept_combined_geom.get(matched_dept_id) is None:
-            dept_combined_geom[matched_dept_id] = geom
-        else:
-            dept_combined_geom[matched_dept_id] = dept_combined_geom[matched_dept_id].union(geom)
+            # Verwijder uit de werklijsten
+            indices.remove(best_idx)
+            unassigned_indices.remove(best_idx)
+
+    # ==========================================
+    # LOOP 3: RESTANT (Geen match = NULL)
+    # ==========================================
+    # Shapes die geen afdeling vonden (bijv. omdat de afdeling nog geen start-geometrie had) blijven leeg!
+    for idx in unassigned_indices:
+        updates.append({"id": gdf.loc[idx, 'id'], "department_id": None, "match_method": None})
 
     print("Resultaten bulksgewijs wegschrijven naar de database...")
     if updates:
@@ -177,7 +190,8 @@ def map_shapes_in_db():
 
     db.close()
     print(f"Succes! In totaal {len(updates)} polygonen behandeld.")
-    print(f" -> {spatial_updates} duplicaten/conflicten feilloos opgelost via ruimtelijke nabijheid.")
+    print(f" -> {spatial_updates} duplicaten exact opgelost via minimale afstandsmeting.")
+    print(f" -> {len(unassigned_indices)} polygonen blijven NULL (Geen match of referentie gevonden).")
 
 
 if __name__ == "__main__":
