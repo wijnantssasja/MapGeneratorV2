@@ -169,3 +169,21 @@ class CoordinateCache(Base):
     lat = Column(Float, nullable=False)
     lon = Column(Float, nullable=False)
     last_checked = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class VolunteerCorps(Base):
+    __tablename__ = "volunteer_corps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    municipality = Column(String, unique=True, index=True)  # Gebaseerd op hoofdgemeente
+    province = Column(String)
+
+    # We houden elke fase apart bij zodat ze flexibel aan/af te vinken zijn
+    phase_1 = Column(Boolean, default=False)
+    phase_2 = Column(Boolean, default=False)
+    phase_3 = Column(Boolean, default=False)
+    phase_4 = Column(Boolean, default=False)
+    phase_5 = Column(Boolean, default=False)
+    phase_6 = Column(Boolean, default=False)
+    phase_7 = Column(Boolean, default=False)
+    phase_8 = Column(Boolean, default=False)

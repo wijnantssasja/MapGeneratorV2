@@ -1,26 +1,163 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Rode Kruis Map Generator{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Toast Popup Styling */
+    #toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .toast {
+        background: white;
+        border-left: 5px solid #1976d2;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        padding: 15px 20px;
+        border-radius: 4px;
+        width: 300px;
+        font-size: 14px;
+        animation: slideIn 0.3s ease-out;
+        position: relative;
+    }
+    .toast.completed { border-left-color: #4CAF50; }
+    .toast.failed { border-left-color: #d32f2f; }
+
+    .toast-title { font-weight: bold; margin-bottom: 5px; color: #333; }
+    .toast-detail { color: #666; font-size: 12px; }
+
+    /* Indeterminate Progress Bar */
+    .progress-bar-bg { width: 100%; background: #eee; height: 6px; border-radius: 3px; margin-top: 10px; overflow: hidden; position: relative;}
+    .progress-bar-fill {
+        height: 100%; background: #1976d2; width: 40%; position: absolute;
+        animation: loading 1.5s infinite linear;
+    }
+
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes loading { 0% { left: -40%; } 100% { left: 100%; } }
+</style>
+{% endblock %}
+
 {% block content %}
-    <h2>Dashboard Overzicht</h2>
-    <p>Aantal geconfigureerde afdelingen in de database: <strong>{{ dept_count }}</strong></p>
-
-    {% if request.query_params.get('map_generated') %}
-    <div style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 4px; border: 1px solid #c3e6cb; margin-bottom: 20px;">
-        <strong>Succes!</strong> De nieuwe interactieve kaart is gegenereerd.
-        <a href="/static/RodeKruis_Kaart.html" target="_blank" style="font-weight: bold; color: #155724; text-decoration: underline;">Klik hier om hem te openen</a>.
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Dashboard & Kaarten Beheer</h2>
+        <span style="background: #e0e0e0; padding: 5px 15px; border-radius: 15px; font-size: 14px;">
+            <strong>{{ dept_count }}</strong> afdelingen in DB
+        </span>
     </div>
-    {% endif %}
 
-    {% if user.role in ['admin', 'nationaal'] %}
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-        <h3>Kaart Genereren</h3>
-        <p>Klik op de onderstaande knop om alle actuele data uit de database om te zetten in een nieuwe interactieve standalone HTML kaart.</p>
-        <form action="/generate-map" method="POST">
-            <button type="submit" style="background-color: #d32f2f; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px;">
-                ⚙️ Genereer Nieuwe Kaart
+    <!-- GENERATOR BLOK -->
+    <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; border-left: 5px solid #d32f2f;">
+        <h3 style="margin-top: 0;">Nieuwe Kaart Genereren (Max 2 gelijktijdig)</h3>
+        <p style="color: #666; font-size: 14px;">Het genereren gebeurt op de achtergrond. Je kunt de pagina gewoon blijven gebruiken.</p>
+
+        <form action="/generate-map" method="POST" style="display: flex; align-items: center; gap: 15px;">
+            <select name="province" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 250px;">
+                {% for prov in provinces %}
+                    <option value="{{ prov }}">{{ prov }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-submit" style="background-color: #d32f2f;">
+                <i class="fa fa-cogs"></i> Start Generatie
             </button>
         </form>
     </div>
-    {% endif %}
+
+    <!-- LIJST MET BESTANDEN -->
+    <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0;">Gegenereerde Kaarten (Max 2GB Opslag)</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 12px; text-align: left;">Bestandsnaam</th>
+                    <th style="padding: 12px; text-align: left;">Aangemaakt op</th>
+                    <th style="padding: 12px; text-align: left;">Grootte</th>
+                    <th style="padding: 12px; text-align: center;">Acties</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in map_files %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px; font-weight: bold; color: #333;">{{ file.name }}</td>
+                    <td style="padding: 12px; color: #666;">{{ file.created }}</td>
+                    <td style="padding: 12px; color: #666;">{{ file.size_mb }} MB</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <a href="/maps/preview/{{ file.name }}" style="background-color: #1976d2; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; font-size: 13px;">
+                            Bekijk
+                        </a>
+                        <a href="/maps/download/{{ file.name }}" style="background-color: #4CAF50; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px;">
+                            Download
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="padding: 20px; text-align: center; color: #888;">Er zijn nog geen kaarten gegenereerd.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Container voor de popups -->
+    <div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function createToastHTML(task) {
+        if(task.status === "running") {
+            return `
+                <div class="toast" id="toast-${task.id}">
+                    <div class="toast-title">Genereren: ${task.province}</div>
+                    <div class="toast-detail">Gestart door <b>${task.user}</b> om ${task.started_at}</div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+                </div>`;
+        } else if(task.status === "completed") {
+            return `
+                <div class="toast completed" id="toast-${task.id}">
+                    <div class="toast-title">✅ Succes!</div>
+                    <div class="toast-detail">${task.province} kaart gegenereerd door ${task.user}.<br>De pagina herlaadt binnen 3 seconden...</div>
+                </div>`;
+        } else {
+            return `
+                <div class="toast failed" id="toast-${task.id}">
+                    <div class="toast-title">❌ Fout bij genereren</div>
+                    <div class="toast-detail">${task.province} mislukt.<br>${task.error}</div>
+                </div>`;
+        }
+    }
+
+    async function checkGenerationStatus() {
+        try {
+            const response = await fetch('/api/generation-status');
+            const data = await response.json();
+            const container = document.getElementById('toast-container');
+
+            // Render actieve of voltooide taken
+            container.innerHTML = data.tasks.map(createToastHTML).join('');
+
+            // Als een taak voltooid of gefaald is, laat hem even staan en ruim hem op
+            data.tasks.forEach(task => {
+                if (task.status === 'completed' || task.status.startsWith('failed')) {
+                    setTimeout(() => {
+                        fetch(`/api/clear-task/${task.id}`, { method: 'POST' }).then(() => {
+                            if(task.status === 'completed') window.location.reload(); // Herlaad zodat nieuwe file in lijst komt
+                        });
+                    }, 3500); // Wacht 3.5 sec en ruim op
+                }
+            });
+        } catch (error) {
+            console.error("Fout bij ophalen status:", error);
+        }
+    }
+
+    // Polling instellen: Check elke 2.5 seconden
+    setInterval(checkGenerationStatus, 2500);
+    checkGenerationStatus(); // Meteen runnen bij inladen
+</script>
 {% endblock %}

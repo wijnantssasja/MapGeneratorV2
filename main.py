@@ -5,9 +5,12 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 import bcrypt
 from database import AuditLog, Municipality, CoordinateCache
-from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service
+from database import SessionLocal, engine, Base, User, Department, Vehicle, SitLocation, SitVehicle, Service, \
+    VolunteerCorps
 from types import SimpleNamespace
 import os
+import uuid
+from fastapi.responses import JSONResponse
 import json
 from sqlalchemy import func
 from database import DepartmentShape, MatchMethodEnum  # <-- Voeg deze regel toe!
@@ -20,6 +23,11 @@ from datetime import datetime
 from urllib.parse import unquote
 from fastapi import BackgroundTasks
 from fastapi.responses import FileResponse
+from fastapi import UploadFile, File
+import pandas as pd
+import io
+from database import Region, Cluster, Municipality
+from fastapi.staticfiles import StaticFiles
 
 # Importeer de losse generator componenten
 from generator import background_generate_map, OUTPUT_DIR
@@ -38,7 +46,6 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 
 # Route om de statische kaart daadwerkelijk te kunnen bekijken
-from fastapi.staticfiles import StaticFiles
 
 app.mount("/static", StaticFiles(directory="/opt/MapGenerator/static"), name="static")
 
@@ -192,25 +199,6 @@ async def logout(request: Request):
 # PROTECTED APP ROUTES
 # ---------------------------------------------------------
 
-@app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, db: Session = Depends(get_db)):
-    # Check authentication
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    dept_count = db.query(Department).count()
-
-    return templates.TemplateResponse(
-        request=request,
-        name="dashboard.html",
-        context={
-            "user": current_user,
-            "dept_count": dept_count
-        }
-    )
-
-
 @app.get("/departments", response_class=HTMLResponse)
 async def list_departments(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
@@ -265,9 +253,6 @@ async def manage_clusters(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request=request, name="clusters.html",
                                       context={"user": current_user, "clusters": clusters, "regions": regions,
                                                "departments": departments, "edit_cluster": None})
-
-
-from database import Region, Cluster, Municipality
 
 
 # --- AFDELINGEN TOEVOEGEN & VERWIDEREN ---
@@ -498,6 +483,7 @@ async def create_sit(request: Request, db: Session = Depends(get_db)):
     log_action(db, current_user.username, "CREATE", "SIT-Locatie", new_sit.name, "Nieuwe SIT aangemaakt.")
     db.commit()
     return RedirectResponse(url="/sit-locations", status_code=status.HTTP_303_SEE_OTHER)
+
 
 @app.post("/sit-locations/edit/{sit_id}")
 async def update_sit(request: Request, sit_id: int, db: Session = Depends(get_db)):
@@ -1095,38 +1081,6 @@ async def toggle_department_shape(dept_id: int, shape_id: str, request: Request,
     return {"action": action}
 
 
-@app.post("/generate-map")
-async def trigger_map_generation(request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    if current_user.role not in ["admin", "nationaal"]:
-        raise HTTPException(status_code=403, detail="Alleen beheerders kunnen de hoofdkaart genereren.")
-
-    # Voorlopige paden bepalen
-    output_dir = "/opt/MapGenerator/static"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, "RodeKruis_Kaart.html")
-
-    try:
-        # Hier roepen we straks jouw script aan:
-        # generate_master_map(db, output_file)
-
-        # Tijdelijke dummy file voor test
-        with open(output_file, "w") as f:
-            f.write("<h1>Kaart wordt gegenereerd...</h1><p>Dit is een tijdelijke test.</p>")
-
-        # Log de actie
-        log_action(db, current_user.username, "CREATE", "Kaart", "Master Map", "Nieuwe kaart gegenereerd")
-
-        # Redirect naar het dashboard met een success-parameter
-        return RedirectResponse(url="/?map_generated=true", status_code=status.HTTP_303_SEE_OTHER)
-    except Exception as e:
-        print(f"Fout bij genereren: {e}")
-        raise HTTPException(status_code=500, detail="Fout bij het genereren van de kaart.")
-
-
 @app.get("/api/departments/{dept_id}/markers")
 async def get_department_markers(dept_id: int, db: Session = Depends(get_db)):
     """Haalt coördinaten op. Prioriteit: Manueel -> Cache -> API Resolutie -> Centroid"""
@@ -1260,40 +1214,6 @@ async def process_force_password(request: Request, new_password: str = Form(...)
 # KAART GENERATOR ROUTES
 # =========================================================
 
-@app.get("/maps", response_class=HTMLResponse)
-async def map_management_page(request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user(request, db)
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    files = glob.glob(os.path.join(OUTPUT_DIR, "*.html"))
-
-    # Maak een nette lijst met bestandsinformatie (nieuwste bovenaan)
-    map_files = []
-    for f in files:
-        stat = os.stat(f)
-        map_files.append({
-            "name": os.path.basename(f),
-            "size_mb": round(stat.st_size / (1024 * 1024), 2),
-            "created": datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
-            "timestamp": stat.st_ctime
-        })
-    map_files.sort(key=lambda x: x["timestamp"], reverse=True)
-
-    # Bepaal welke provincies de gebruiker mag genereren
-    if current_user.role in ["admin", "nationaal"]:
-        provinces = ["Vlaanderen", "Antwerpen", "Limburg", "Oost-Vlaanderen", "West-Vlaanderen", "Vlaams-Brabant",
-                     "Brussel"]
-    else:
-        provinces = [current_user.province_access]
-
-    return templates.TemplateResponse(request=request, name="maps.html", context={
-        "user": current_user,
-        "map_files": map_files,
-        "provinces": provinces
-    })
-
 
 @app.get("/maps/preview/{filename}", response_class=HTMLResponse)
 async def preview_map(request: Request, filename: str, db: Session = Depends(get_db)):
@@ -1324,7 +1244,72 @@ async def download_map(filename: str):
     return FileResponse(path=file_path, filename=safe_filename, media_type='text/html')
 
 
-@app.post("/maps/generate")
+# --- NIEUW: Globaal register voor actieve kaart-generaties ---
+ACTIVE_GENERATIONS = {}
+
+# Zorg dat je output_dir importeert of definieert bovenaan
+OUTPUT_DIR = "/opt/MapGenerator/static"
+
+
+# =========================================================
+# DASHBOARD ROUTE (GECOMBINEERD)
+# =========================================================
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept_count = db.query(Department).count()
+
+    # Kaarten inladen
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    files = glob.glob(os.path.join(OUTPUT_DIR, "*.html"))
+    map_files = []
+    for f in files:
+        stat = os.stat(f)
+        map_files.append({
+            "name": os.path.basename(f),
+            "size_mb": round(stat.st_size / (1024 * 1024), 2),
+            "created": datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+            "timestamp": stat.st_ctime
+        })
+    map_files.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    # Rechten voor generatie
+    if current_user.role in ["admin", "nationaal"]:
+        provinces = ["Vlaanderen", "Antwerpen", "Limburg", "Oost-Vlaanderen", "West-Vlaanderen", "Vlaams-Brabant",
+                     "Brussel"]
+    else:
+        provinces = [current_user.province_access]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "user": current_user,
+            "dept_count": dept_count,
+            "map_files": map_files,
+            "provinces": provinces
+        }
+    )
+
+
+# =========================================================
+# KAART GENERATOR (LOGICA & POLLING)
+# =========================================================
+def generator_wrapper(task_id: str, province: str, username: str):
+    """Functie die de background_generate_map aanroept en status update."""
+    try:
+        # Dit roept je externe generator aan
+        background_generate_map(province, username)
+        ACTIVE_GENERATIONS[task_id]["status"] = "completed"
+    except Exception as e:
+        ACTIVE_GENERATIONS[task_id]["status"] = f"failed"
+        ACTIVE_GENERATIONS[task_id]["error"] = str(e)
+
+
+@app.post("/generate-map")
 async def trigger_map_generation(
         request: Request,
         background_tasks: BackgroundTasks,
@@ -1338,11 +1323,229 @@ async def trigger_map_generation(
     if province != "Vlaanderen" and current_user.role == "provinciaal" and current_user.province_access != province:
         return HTMLResponse("<h2>Geen rechten voor deze provincie.</h2>", status_code=403)
 
-    # Log de actie
+    # 1. Controleer of het limiet van 2 bereikt is
+    running_tasks = [t for t in ACTIVE_GENERATIONS.values() if t['status'] == 'running']
+    if len(running_tasks) >= 2:
+        raise HTTPException(status_code=429, detail="Er worden al maximaal (2) kaarten gegenereerd. Even geduld aub.")
+
+    # 2. Maak de taak aan
+    task_id = str(uuid.uuid4())
+    ACTIVE_GENERATIONS[task_id] = {
+        "id": task_id,
+        "user": current_user.username,
+        "province": province,
+        "status": "running",
+        "started_at": datetime.now().strftime('%H:%M:%S')
+    }
+
     log_action(db, current_user.username, "CREATE", "Kaart", f"Kaart {province}", "Generatie gestart op de achtergrond")
     db.commit()
 
-    # Roep de externe generator.py functie aan via de background_tasks
-    background_tasks.add_task(background_generate_map, province, current_user.username)
+    # 3. Start op achtergrond
+    background_tasks.add_task(generator_wrapper, task_id, province, current_user.username)
 
-    return RedirectResponse(url="/maps?status=generating", status_code=status.HTTP_303_SEE_OTHER)
+    # 4. Redirect ZONDER '?status=generating' URL vervuiling
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/api/generation-status")
+async def generation_status():
+    """API Endpoint die door het dashboard gelezen wordt om de popup te voeden."""
+    return JSONResponse(content={"tasks": list(ACTIVE_GENERATIONS.values())})
+
+
+@app.post("/api/clear-task/{task_id}")
+async def clear_task(task_id: str):
+    """Verwijdert een voltooide taak uit het register zodat de popup verdwijnt."""
+    if task_id in ACTIVE_GENERATIONS:
+        del ACTIVE_GENERATIONS[task_id]
+    return {"status": "cleared"}
+
+
+# LET OP: Verwijder de oude @app.get("/maps") en @app.post("/maps/generate") routes!
+
+# =========================================================
+# VRIJWILLIGERSKORPSEN (DASHBOARD, EXCEL & MAP)
+# =========================================================
+@app.get("/vrijwilligerskorpsen", response_class=HTMLResponse)
+async def vrijwilligerskorpsen_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    corps = db.query(VolunteerCorps).order_by(VolunteerCorps.municipality).all()
+    return templates.TemplateResponse(request=request, name="vrijwilligerskorpsen.html", context={
+        "user": current_user, "corps": corps
+    })
+
+
+@app.post("/api/vrijwilligerskorpsen/upload")
+async def upload_vk_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Verwerkt de geüploade Excel en geeft een diff terug (niets wordt nog opgeslagen)."""
+    contents = await file.read()
+    try:
+        df = pd.read_excel(io.BytesIO(contents), sheet_name='Geïnteresseerde gemeenten')
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Kon sheet 'Geïnteresseerde gemeenten' niet vinden in het bestand.")
+
+    excel_data = {}
+    for _, row in df.iterrows():
+        mun = str(row.get('Gemeente', '')).strip()
+        status = str(row.get('Status', ''))
+        prov = str(row.get('Provincie', '')).strip()
+
+        if not mun or mun == 'nan': continue
+
+        # Leid de fase af uit de status-string (eerste karakter is vaak een cijfer)
+        phase = 1
+        if status and status[0].isdigit():
+            phase = int(status[0])
+
+        excel_data[mun] = {"province": prov, "phase": phase}
+
+    # Huidige DB status opvragen
+    db_data_raw = db.query(VolunteerCorps).all()
+    db_data = {}
+    for c in db_data_raw:
+        # Bepaal hoogste actieve fase
+        highest = 0
+        if c.phase_8:
+            highest = 8
+        elif c.phase_7:
+            highest = 7
+        elif c.phase_6:
+            highest = 6
+        elif c.phase_5:
+            highest = 5
+        elif c.phase_4:
+            highest = 4
+        elif c.phase_3:
+            highest = 3
+        elif c.phase_2:
+            highest = 2
+        elif c.phase_1:
+            highest = 1
+        db_data[c.municipality] = highest
+
+    # Zoek de verschillen
+    diff = []
+    for mun, info in excel_data.items():
+        new_phase = info["phase"]
+        if mun not in db_data:
+            diff.append({"municipality": mun, "province": info["province"], "old_phase": 0, "new_phase": new_phase,
+                         "action": "NIEUW"})
+        elif db_data[mun] != new_phase:
+            diff.append(
+                {"municipality": mun, "province": info["province"], "old_phase": db_data[mun], "new_phase": new_phase,
+                 "action": "UPDATE"})
+
+    return {"diff": diff}
+
+
+@app.post("/api/vrijwilligerskorpsen/sync")
+async def sync_vk_excel(request: Request, db: Session = Depends(get_db)):
+    """Slaat de geaccepteerde Excel-diff op in de database."""
+    current_user = get_current_user(request, db)
+    data = await request.json()
+    diff = data.get("diff", [])
+
+    for item in diff:
+        mun = item["municipality"]
+        phase = item["new_phase"]
+
+        corp = db.query(VolunteerCorps).filter(VolunteerCorps.municipality == mun).first()
+        if not corp:
+            corp = VolunteerCorps(municipality=mun, province=item.get("province", ""))
+            db.add(corp)
+
+        # Overschrijf logica: alle fases tot en met de bereikte fase worden True
+        corp.phase_1 = phase >= 1
+        corp.phase_2 = phase >= 2
+        corp.phase_3 = phase >= 3
+        corp.phase_4 = phase >= 4
+        corp.phase_5 = phase >= 5
+        corp.phase_6 = phase >= 6
+        corp.phase_7 = phase >= 7
+        corp.phase_8 = phase >= 8
+
+    log_action(db, current_user.username, "UPDATE", "Vrijwilligerskorpsen", "Bulk Excel Upload",
+               f"{len(diff)} wijzigingen doorgevoerd.")
+    db.commit()
+    return {"status": "success"}
+
+
+@app.post("/api/vrijwilligerskorpsen/save")
+async def save_vk_manual(request: Request, db: Session = Depends(get_db)):
+    """Slaat manuele aanpassingen vanuit de HTML tabel op."""
+    current_user = get_current_user(request, db)
+    data = await request.json()
+    for row in data:
+        corp = db.query(VolunteerCorps).filter(VolunteerCorps.id == row["id"]).first()
+        if corp:
+            corp.phase_1 = row["phase_1"]
+            corp.phase_2 = row["phase_2"]
+            corp.phase_3 = row["phase_3"]
+            corp.phase_4 = row["phase_4"]
+            corp.phase_5 = row["phase_5"]
+            corp.phase_6 = row["phase_6"]
+            corp.phase_7 = row["phase_7"]
+            corp.phase_8 = row["phase_8"]
+
+    log_action(db, current_user.username, "UPDATE", "Vrijwilligerskorpsen", "Manuele Tabel Update",
+               "Verschillende fases handmatig aangepast.")
+    db.commit()
+    return {"status": "success"}
+
+
+@app.get("/api/vrijwilligerskorpsen/map_data")
+async def get_vk_map_data(db: Session = Depends(get_db)):
+    """Voegt polygonen (per hoofdgem) dynamisch samen en plakt de hoogste fase eraan vast."""
+    sql = """
+    SELECT 
+        hoofdgem, 
+        ST_AsGeoJSON(ST_Simplify(ST_Union(geom::geometry), 0.0005)) as geojson
+    FROM department_shapes
+    WHERE hoofdgem IS NOT NULL
+    GROUP BY hoofdgem
+    """
+    shapes = db.execute(text(sql)).mappings().fetchall()
+
+    corps_raw = db.query(VolunteerCorps).all()
+    corps_dict = {}
+    for c in corps_raw:
+        highest = 0
+        if c.phase_8:
+            highest = 8
+        elif c.phase_7:
+            highest = 7
+        elif c.phase_6:
+            highest = 6
+        elif c.phase_5:
+            highest = 5
+        elif c.phase_4:
+            highest = 4
+        elif c.phase_3:
+            highest = 3
+        elif c.phase_2:
+            highest = 2
+        elif c.phase_1:
+            highest = 1
+        corps_dict[c.municipality.lower()] = highest
+
+    features = []
+    for r in shapes:
+        mun = r["hoofdgem"]
+        mun_lower = str(mun).lower()
+        phase = corps_dict.get(mun_lower, 0)
+
+        if not r["geojson"]: continue
+
+        features.append({
+            "type": "Feature",
+            "geometry": json.loads(r["geojson"]),
+            "properties": {
+                "municipality": mun,
+                "phase": phase
+            }
+        })
+    return {"type": "FeatureCollection", "features": features}
