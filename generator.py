@@ -147,8 +147,6 @@ class MapEnhancer(MacroElement):
     """)
 
 
-
-
 def get_coords_for_address(addr_str, db_session):
     if not addr_str or not addr_str.strip():
         return None, None
@@ -602,6 +600,11 @@ def background_generate_map(province_filter: str, username: str):
             title_text = f"Provinciale Zetel {dept.name}" if is_zetel else f"Rode Kruis-{dept.name}"
 
             final_lat, final_lon = dept.lat, dept.lon
+
+            # Als lat/lon leeg zijn, maar er is een adres, haal het uit de cache/API
+            if not final_lat and dept.address:
+                final_lat, final_lon = get_coords_for_address(dept.address, db)
+
             if not final_lat and not gdf_selected.empty:
                 mask = gdf_selected['cluster_name'] == dept.name
                 if mask.any():
@@ -656,9 +659,13 @@ def background_generate_map(province_filter: str, username: str):
             # Ziekenwagens (Gegroepeerd per adres met badge)
             grouped_zws = {}
             for v in dept.vehicles:
-                v_lat = v.lat if v.lat else final_lat
-                v_lon = v.lon if v.lon else final_lon
                 v_addr = v.address if v.address else dept.address
+                # Als lat/lon leeg zijn, maar er is een adres, haal het uit de cache/API
+                if not v.lat and dept.address:
+                    v_lat, v_lon = get_coords_for_address(v_addr, db)
+                else:
+                    v_lat = v.lat if v.lat else final_lat
+                    v_lon = v.lon if v.lon else final_lon
 
                 if v_lat and v_lon:
                     group_key = (v_addr, v_lat, v_lon)
@@ -974,23 +981,25 @@ def background_generate_map(province_filter: str, username: str):
             <b>&copy; {current_year} Rode Kruis Vlaanderen</b> - Sasja Wijnants<br><span style="font-size: 10px; color: #555;">Interactieve Kaart {prov_name} - {current_date_str}</span>
         </div>
         """
-
-        legend_html = """
-        <div id="rk-legend-wrapper" style="position: absolute; bottom: 30px; right: 15px; z-index: 9999; background-color: rgba(255, 255, 255, 0.95); padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: Arial, sans-serif; font-size: 12px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); pointer-events: auto; min-width: 170px;">
-            <div id="rk-legend-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid #ccc; padding-bottom: 3px;">
-                <h4 style="margin: 0; font-size: 13px; color: #d32f2f;">Legende Disciplines</h4>
-                <span id="rk-legend-toggle" style="font-weight: bold; font-size: 16px; margin-left: 15px; line-height: 1; color: #d32f2f;">−</span>
+        if not is_public:
+            legend_html = """
+            <div id="rk-legend-wrapper" style="position: absolute; bottom: 30px; right: 15px; z-index: 9999; background-color: rgba(255, 255, 255, 0.95); padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: Arial, sans-serif; font-size: 12px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); pointer-events: auto; min-width: 170px;">
+                <div id="rk-legend-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid #ccc; padding-bottom: 3px;">
+                    <h4 style="margin: 0; font-size: 13px; color: #d32f2f;">Legende Disciplines</h4>
+                    <span id="rk-legend-toggle" style="font-weight: bold; font-size: 16px; margin-left: 15px; line-height: 1; color: #d32f2f;">−</span>
+                </div>
+                <div id="rk-legend-content" style="margin-top: 8px; display: block;">
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(45deg, #FFA500, #FFA500 3px, white 3px, white 6px);"></div> Jeugd</div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(-45deg, #800080, #800080 3px, white 3px, white 6px);"></div> Zorgbib</div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(90deg, #008080, #008080 3px, white 3px, white 6px);"></div> Brugfiguren</div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(0deg, #0000FF, #0000FF 3px, white 3px, white 6px);"></div> Internationaal</div>
+                    <div style="display: flex; align-items: center;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(135deg, #008000, #008000 3px, white 3px, white 6px);"></div> Uitleendienst</div>
+                    <div style="display: flex; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 6px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 2px solid #388E3C; background-color: rgba(76, 175, 80, 0.4);"></div> Vrijwilligerskorpsen</div>
+                </div>
             </div>
-            <div id="rk-legend-content" style="margin-top: 8px; display: block;">
-                <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(45deg, #FFA500, #FFA500 3px, white 3px, white 6px);"></div> Jeugd</div>
-                <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(-45deg, #800080, #800080 3px, white 3px, white 6px);"></div> Zorgbib</div>
-                <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(90deg, #008080, #008080 3px, white 3px, white 6px);"></div> Brugfiguren</div>
-                <div style="display: flex; align-items: center; margin-bottom: 4px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(0deg, #0000FF, #0000FF 3px, white 3px, white 6px);"></div> Internationaal</div>
-                <div style="display: flex; align-items: center;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 1px solid #666; background: repeating-linear-gradient(135deg, #008000, #008000 3px, white 3px, white 6px);"></div> Uitleendienst</div>
-                <div style="display: flex; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 6px;"><div style="width: 16px; height: 16px; margin-right: 8px; border: 2px solid #388E3C; background-color: rgba(76, 175, 80, 0.4);"></div> Vrijwilligerskorpsen</div>
-            </div>
-        </div>
-        """
+            """
+        else:
+            legend_html = ""
 
         inject_js = f"""
         <script>
