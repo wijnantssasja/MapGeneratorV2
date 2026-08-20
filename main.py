@@ -1299,14 +1299,34 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 # =========================================================
 # KAART GENERATOR (LOGICA & POLLING)
 # =========================================================
-def generator_wrapper(task_id: str, province: str, username: str):
-    """Functie die de background_generate_map aanroept en status update."""
+# =========================================================
+# KAART GENERATOR (LOGICA & POLLING)
+# =========================================================
+import generator  # Importeer de hele module om instellingen te kunnen injecteren
+
+
+def generator_wrapper(task_id: str, province: str, username: str, is_public: bool, vk_muns: list):
+    """Functie die instellingen doorgeeft en de map genereert."""
     try:
-        # Dit roept je externe generator aan
-        background_generate_map(province, username)
+        prefix = "Kaart_Publiek" if is_public else "Kaart_Intern"
+
+        # Injecteer de instellingen dynamisch in de generator
+        if hasattr(generator, 'CONFIG'):
+            if 'settings' not in generator.CONFIG:
+                generator.CONFIG['settings'] = {}
+            if 'paths' not in generator.CONFIG:
+                generator.CONFIG['paths'] = {}
+
+            generator.CONFIG['settings']['public_version'] = is_public
+            generator.CONFIG['vrijwilligerskorpsen'] = vk_muns
+            generator.CONFIG['paths']['base_filename'] = f"{prefix}_{province}"
+
+        # Roep de bestaande functie aan
+        generator.background_generate_map(province, username)
+
         ACTIVE_GENERATIONS[task_id]["status"] = "completed"
     except Exception as e:
-        ACTIVE_GENERATIONS[task_id]["status"] = f"failed"
+        ACTIVE_GENERATIONS[task_id]["status"] = "failed"
         ACTIVE_GENERATIONS[task_id]["error"] = str(e)
 
 
@@ -1315,6 +1335,7 @@ async def trigger_map_generation(
         request: Request,
         background_tasks: BackgroundTasks,
         province: str = Form(...),
+        public_version: bool = Form(False),  # Vangt de checkbox af
         db: Session = Depends(get_db)
 ):
     current_user = get_current_user(request, db)
@@ -1324,28 +1345,30 @@ async def trigger_map_generation(
     if province != "Vlaanderen" and current_user.role == "provinciaal" and current_user.province_access != province:
         return HTMLResponse("<h2>Geen rechten voor deze provincie.</h2>", status_code=403)
 
-    # 1. Controleer of het limiet van 2 bereikt is
     running_tasks = [t for t in ACTIVE_GENERATIONS.values() if t['status'] == 'running']
     if len(running_tasks) >= 2:
         raise HTTPException(status_code=429, detail="Er worden al maximaal (2) kaarten gegenereerd. Even geduld aub.")
 
-    # 2. Maak de taak aan
+    # --- NIEUW: Vrijwilligerskorpsen (Fase 4 of hoger) ophalen ---
+    active_corps = db.query(VolunteerCorps).filter(VolunteerCorps.phase_4 == True).all()
+    vk_muns = [c.municipality for c in active_corps]
+
     task_id = str(uuid.uuid4())
     ACTIVE_GENERATIONS[task_id] = {
         "id": task_id,
         "user": current_user.username,
-        "province": province,
+        "province": f"{province} ({'Publiek' if public_version else 'Intern'})",
         "status": "running",
         "started_at": datetime.now().strftime('%H:%M:%S')
     }
 
-    log_action(db, current_user.username, "CREATE", "Kaart", f"Kaart {province}", "Generatie gestart op de achtergrond")
+    log_action(db, current_user.username, "CREATE", "Kaart", f"Kaart {province}",
+               f"Generatie gestart (Publiek: {public_version})")
     db.commit()
 
-    # 3. Start op achtergrond
-    background_tasks.add_task(generator_wrapper, task_id, province, current_user.username)
+    # Geef de extra parameters door aan de achtergrondtaak
+    background_tasks.add_task(generator_wrapper, task_id, province, current_user.username, public_version, vk_muns)
 
-    # 4. Redirect ZONDER '?status=generating' URL vervuiling
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 

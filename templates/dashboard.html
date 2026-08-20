@@ -43,68 +43,80 @@
 {% endblock %}
 
 {% block content %}
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2>Dashboard & Kaarten Beheer</h2>
-        <span style="background: #e0e0e0; padding: 5px 15px; border-radius: 15px; font-size: 14px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Dashboard & Kaarten Beheer</h2>
+    <span style="background: #e0e0e0; padding: 5px 15px; border-radius: 15px; font-size: 14px;">
             <strong>{{ dept_count }}</strong> afdelingen in DB
         </span>
-    </div>
+</div>
 
-    <!-- GENERATOR BLOK -->
-    <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; border-left: 5px solid #d32f2f;">
-        <h3 style="margin-top: 0;">Nieuwe Kaart Genereren (Max 2 gelijktijdig)</h3>
-        <p style="color: #666; font-size: 14px;">Het genereren gebeurt op de achtergrond. Je kunt de pagina gewoon blijven gebruiken.</p>
+<!-- GENERATOR BLOK -->
+<div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; border-left: 5px solid #d32f2f;">
+    <h3 style="margin-top: 0;">Nieuwe Kaart Genereren (Max 2 gelijktijdig)</h3>
+    <p style="color: #666; font-size: 14px;">Het genereren gebeurt op de achtergrond. Je kunt de pagina gewoon blijven
+        gebruiken.</p>
 
-        <form action="/generate-map" method="POST" style="display: flex; align-items: center; gap: 15px;">
-            <select name="province" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 250px;">
-                {% for prov in provinces %}
-                    <option value="{{ prov }}">{{ prov }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-submit" style="background-color: #d32f2f;">
-                <i class="fa fa-cogs"></i> Start Generatie
-            </button>
-        </form>
-    </div>
+    <form action="/generate-map" method="POST" style="display: flex; align-items: center; gap: 15px;">
+        <select name="province" required
+                style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 250px;">
+            {% for prov in provinces %}
+            <option value="{{ prov }}">{{ prov }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-submit" style="background-color: #d32f2f;">
+            <i class="fa fa-cogs"></i> Start Generatie
+        </button>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+            <input type="checkbox" id="public_version" name="public_version" value="true"
+                   style="width: 16px; height: 16px; cursor: pointer;">
+            <label for="public_version" style="margin: 0; cursor: pointer; color: #555; font-size: 13px;">Publieke
+                versie genereren (Verberg interne data zoals SIT, ambulances en disciplines)</label>
+        </div>
+    </form>
+</div>
 
-    <!-- LIJST MET BESTANDEN -->
-    <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <h3 style="margin-top: 0;">Gegenereerde Kaarten (Max 2GB Opslag)</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
-                    <th style="padding: 12px; text-align: left;">Bestandsnaam</th>
-                    <th style="padding: 12px; text-align: left;">Aangemaakt op</th>
-                    <th style="padding: 12px; text-align: left;">Grootte</th>
-                    <th style="padding: 12px; text-align: center;">Acties</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for file in map_files %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 12px; font-weight: bold; color: #333;">{{ file.name }}</td>
-                    <td style="padding: 12px; color: #666;">{{ file.created }}</td>
-                    <td style="padding: 12px; color: #666;">{{ file.size_mb }} MB</td>
-                    <td style="padding: 12px; text-align: center;">
-                        <a href="/maps/preview/{{ file.name }}" style="background-color: #1976d2; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; font-size: 13px;">
-                            Bekijk
-                        </a>
-                        <a href="/maps/download/{{ file.name }}" style="background-color: #4CAF50; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px;">
-                            Download
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="4" style="padding: 20px; text-align: center; color: #888;">Er zijn nog geen kaarten gegenereerd.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<!-- LIJST MET BESTANDEN -->
+<div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3 style="margin-top: 0;">Gegenereerde Kaarten (Max 2GB Opslag)</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+        <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+            <th style="padding: 12px; text-align: left;">Bestandsnaam</th>
+            <th style="padding: 12px; text-align: left;">Aangemaakt op</th>
+            <th style="padding: 12px; text-align: left;">Grootte</th>
+            <th style="padding: 12px; text-align: center;">Acties</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for file in map_files %}
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 12px; font-weight: bold; color: #333;">{{ file.name }}</td>
+            <td style="padding: 12px; color: #666;">{{ file.created }}</td>
+            <td style="padding: 12px; color: #666;">{{ file.size_mb }} MB</td>
+            <td style="padding: 12px; text-align: center;">
+                <a href="/maps/preview/{{ file.name }}"
+                   style="background-color: #1976d2; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; font-size: 13px;">
+                    Bekijk
+                </a>
+                <a href="/maps/download/{{ file.name }}"
+                   style="background-color: #4CAF50; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px;">
+                    Download
+                </a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4" style="padding: 20px; text-align: center; color: #888;">Er zijn nog geen kaarten
+                gegenereerd.
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-    <!-- Container voor de popups -->
-    <div id="toast-container"></div>
+<!-- Container voor de popups -->
+<div id="toast-container"></div>
 {% endblock %}
 
 {% block scripts %}
