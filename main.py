@@ -28,6 +28,7 @@ import pandas as pd
 import io
 from database import Region, Cluster, Municipality
 from fastapi.staticfiles import StaticFiles
+from types import SimpleNamespace
 
 # Importeer de losse generator componenten
 from generator import background_generate_map, OUTPUT_DIR
@@ -1367,15 +1368,68 @@ async def clear_task(task_id: str):
 # =========================================================
 # VRIJWILLIGERSKORPSEN (DASHBOARD, EXCEL & MAP)
 # =========================================================
+from types import SimpleNamespace
+
+
+# ...
+
+# =========================================================
+# VRIJWILLIGERSKORPSEN (DASHBOARD, EXCEL & MAP)
+# =========================================================
 @app.get("/vrijwilligerskorpsen", response_class=HTMLResponse)
 async def vrijwilligerskorpsen_page(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    corps = db.query(VolunteerCorps).order_by(VolunteerCorps.municipality).all()
+    # 1. Bepaal via postcodes welke gemeentes Vlaams zijn en in welke provincie ze liggen
+    sql = """
+        SELECT hoofdgem, MAX(CAST(NULLIF(regexp_replace(postcode, '\\D', '', 'g'), '') AS INTEGER)) as pc
+        FROM department_shapes 
+        WHERE hoofdgem IS NOT NULL 
+        GROUP BY hoofdgem
+    """
+    mun_data = db.execute(text(sql)).fetchall()
+
+    vlaamse_muns = {}
+    for mun, pc in mun_data:
+        if pc is None: continue
+        prov = ""
+        # Strikte filtering voor Vlaanderen
+        if (1500 <= pc <= 1999) or (3000 <= pc <= 3499):
+            prov = "Vlaams-Brabant"
+        elif 2000 <= pc <= 2999:
+            prov = "Antwerpen"
+        elif 3500 <= pc <= 3999:
+            prov = "Limburg"
+        elif 8000 <= pc <= 8999:
+            prov = "West-Vlaanderen"
+        elif 9000 <= pc <= 9999:
+            prov = "Oost-Vlaanderen"
+
+        if prov:  # Alleen toevoegen als het effectief een Vlaamse gemeente is
+            vlaamse_muns[mun] = prov
+
+    # 2. Haal bestaande opslag op uit de database
+    corps_db = {c.municipality: c for c in db.query(VolunteerCorps).all()}
+
+    # 3. Bouw de complete tabel (inclusief degene die nog NIET in de DB of Excel stonden)
+    combined_corps = []
+    for mun in sorted(vlaamse_muns.keys()):
+        if mun in corps_db:
+            combined_corps.append(corps_db[mun])
+        else:
+            # We maken een tijdelijk object aan voor de tabel, deze krijgt ID 'new_Naam'
+            combined_corps.append(SimpleNamespace(
+                id=f"new_{mun}",
+                municipality=mun,
+                province=vlaamse_muns[mun],
+                phase_1=False, phase_2=False, phase_3=False, phase_4=False,
+                phase_5=False, phase_6=False, phase_7=False, phase_8=False
+            ))
+
     return templates.TemplateResponse(request=request, name="vrijwilligerskorpsen.html", context={
-        "user": current_user, "corps": corps
+        "user": current_user, "corps": combined_corps
     })
 
 
@@ -1396,18 +1450,15 @@ async def upload_vk_excel(file: UploadFile = File(...), db: Session = Depends(ge
 
         if not mun or mun == 'nan': continue
 
-        # Leid de fase af uit de status-string (eerste karakter is vaak een cijfer)
         phase = 1
         if status and status[0].isdigit():
             phase = int(status[0])
 
         excel_data[mun] = {"province": prov, "phase": phase}
 
-    # Huidige DB status opvragen
     db_data_raw = db.query(VolunteerCorps).all()
     db_data = {}
     for c in db_data_raw:
-        # Bepaal hoogste actieve fase
         highest = 0
         if c.phase_8:
             highest = 8
@@ -1427,7 +1478,6 @@ async def upload_vk_excel(file: UploadFile = File(...), db: Session = Depends(ge
             highest = 1
         db_data[c.municipality] = highest
 
-    # Zoek de verschillen
     diff = []
     for mun, info in excel_data.items():
         new_phase = info["phase"]
@@ -1458,7 +1508,6 @@ async def sync_vk_excel(request: Request, db: Session = Depends(get_db)):
             corp = VolunteerCorps(municipality=mun, province=item.get("province", ""))
             db.add(corp)
 
-        # Overschrijf logica: alle fases tot en met de bereikte fase worden True
         corp.phase_1 = phase >= 1
         corp.phase_2 = phase >= 2
         corp.phase_3 = phase >= 3
@@ -1476,37 +1525,58 @@ async def sync_vk_excel(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/api/vrijwilligerskorpsen/save")
 async def save_vk_manual(request: Request, db: Session = Depends(get_db)):
-    """Slaat manuele aanpassingen vanuit de HTML tabel op."""
+    """Slaat manuele aanpassingen op (en maakt ontbrekende korpsen aan)."""
     current_user = get_current_user(request, db)
     data = await request.json()
+
     for row in data:
-        corp = db.query(VolunteerCorps).filter(VolunteerCorps.id == row["id"]).first()
+        corp_id = str(row["id"])
+        phase = int(row["highest_phase"])
+
+        # Als het een nieuw korps is (voor het eerst gewijzigd)
+        if corp_id.startswith("new_"):
+            mun = corp_id.replace("new_", "")
+            corp = db.query(VolunteerCorps).filter(VolunteerCorps.municipality == mun).first()
+            if not corp:
+                corp = VolunteerCorps(municipality=mun, province=row.get("province", ""))
+                db.add(corp)
+        else:
+            corp = db.query(VolunteerCorps).filter(VolunteerCorps.id == int(corp_id)).first()
+
         if corp:
-            corp.phase_1 = row["phase_1"]
-            corp.phase_2 = row["phase_2"]
-            corp.phase_3 = row["phase_3"]
-            corp.phase_4 = row["phase_4"]
-            corp.phase_5 = row["phase_5"]
-            corp.phase_6 = row["phase_6"]
-            corp.phase_7 = row["phase_7"]
-            corp.phase_8 = row["phase_8"]
+            corp.phase_1 = phase >= 1
+            corp.phase_2 = phase >= 2
+            corp.phase_3 = phase >= 3
+            corp.phase_4 = phase >= 4
+            corp.phase_5 = phase >= 5
+            corp.phase_6 = phase >= 6
+            corp.phase_7 = phase >= 7
+            corp.phase_8 = phase >= 8
 
     log_action(db, current_user.username, "UPDATE", "Vrijwilligerskorpsen", "Manuele Tabel Update",
-               "Verschillende fases handmatig aangepast.")
+               f"{len(data)} korpsen geüpdatet.")
     db.commit()
     return {"status": "success"}
 
 
 @app.get("/api/vrijwilligerskorpsen/map_data")
 async def get_vk_map_data(db: Session = Depends(get_db)):
-    """Voegt polygonen (per hoofdgem) dynamisch samen en plakt de hoogste fase eraan vast."""
+    """Voegt polygonen samen en gooit Wallonië & Brussel volledig van de kaart!"""
     sql = """
+    WITH vlaamse_gem AS (
+        SELECT hoofdgem
+        FROM department_shapes
+        WHERE hoofdgem IS NOT NULL
+        GROUP BY hoofdgem
+        HAVING MAX(CAST(NULLIF(regexp_replace(postcode, '\\D', '', 'g'), '') AS INTEGER)) BETWEEN 1500 AND 3999 
+            OR MAX(CAST(NULLIF(regexp_replace(postcode, '\\D', '', 'g'), '') AS INTEGER)) BETWEEN 8000 AND 9999
+    )
     SELECT 
-        hoofdgem, 
-        ST_AsGeoJSON(ST_Simplify(ST_Union(geom::geometry), 0.0005)) as geojson
-    FROM department_shapes
-    WHERE hoofdgem IS NOT NULL
-    GROUP BY hoofdgem
+        d.hoofdgem, 
+        ST_AsGeoJSON(ST_Simplify(ST_Union(d.geom::geometry), 0.0005)) as geojson
+    FROM department_shapes d
+    JOIN vlaamse_gem v ON d.hoofdgem = v.hoofdgem
+    GROUP BY d.hoofdgem
     """
     shapes = db.execute(text(sql)).mappings().fetchall()
 

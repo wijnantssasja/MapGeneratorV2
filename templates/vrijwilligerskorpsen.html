@@ -6,20 +6,25 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     .section-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; }
-    #map { height: 500px; width: 100%; border-radius: 8px; border: 1px solid #ccc; z-index: 1;}
-    .diff-table, .main-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-    .diff-table th, .main-table th { background-color: #f5f5f5; border-bottom: 2px solid #ddd; padding: 8px; position: sticky; top: 0; }
-    .diff-table td, .main-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: center; }
-    .main-table td:first-child { text-align: left; font-weight: bold; }
-    
+    #map { height: 600px; width: 100%; border-radius: 8px; border: 1px solid #ccc; z-index: 1;}
+    .diff-table, .main-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+
+    .diff-table th, .main-table th { background-color: #f5f5f5; border-bottom: 2px solid #ddd; padding: 12px 8px; position: sticky; top: 0; text-align: left;}
+
+    .diff-table td, .main-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+    .main-table td:first-child { font-weight: bold; width: 250px; }
+    .main-table td:nth-child(2) { width: 200px; }
+
+    .phase-dropdown { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; background-color: white;}
+
     #saveBtn { background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s; opacity: 0.5; pointer-events: none; }
     #saveBtn.active { opacity: 1; pointer-events: auto; }
-    
+
     .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
     .badge-nieuw { background-color: #1976d2; }
     .badge-update { background-color: #f57c00; }
-    
-    .table-container { max-height: 400px; overflow-y: auto; }
+
+    .table-container { max-height: 500px; overflow-y: auto; }
 </style>
 {% endblock %}
 
@@ -30,7 +35,7 @@
         <input type="file" id="excelFile" accept=".xlsx" style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
         <button onclick="uploadExcel()" style="background-color: #1976d2; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Genereer Verschillen (Diff)</button>
     </div>
-    
+
     <div id="diffContainer" style="display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
         <h4>Gevonden Wijzigingen</h4>
         <div class="table-container">
@@ -51,34 +56,46 @@
         <h3 style="margin: 0;">2. Manuele Opvolging Korpsen</h3>
         <button id="saveBtn" onclick="saveManualChanges()">💾 Wijzigingen Opslaan</button>
     </div>
-    
-    <div class="table-container" style="max-height: 600px;">
+
+    <div class="table-container">
         <table class="main-table">
             <thead>
                 <tr>
-                    <th style="text-align: left;">Gemeente</th>
-                    <th title="Gemeente geregistreerd via landingspagina">Fase 1</th>
-                    <th title="Lokale RKV afdeling geïnformeerd">Fase 2</th>
-                    <th title="Gemeente gecontacteerd door RKV">Fase 3</th>
-                    <th title="SWO ondertekend">Fase 4</th>
-                    <th title="Communicatie aan inwoners">Fase 5</th>
-                    <th title="Minstens 20 vrijwilligers">Fase 6</th>
-                    <th title="Basisopleiding ingepland">Fase 7</th>
-                    <th title="Korps activeerbaar">Fase 8</th>
+                    <th>Gemeente</th>
+                    <th>Provincie</th>
+                    <th>Huidige Actieve Fase (Alles hiervoor wordt automatisch afgevinkt)</th>
                 </tr>
             </thead>
             <tbody>
                 {% for c in corps %}
-                <tr data-id="{{ c.id }}">
+                <!-- Bepaal de hoogst actieve fase in Jinja -->
+                {% set highest = 0 %}
+                {% if c.phase_8 %}{% set highest = 8 %}
+                {% elif c.phase_7 %}{% set highest = 7 %}
+                {% elif c.phase_6 %}{% set highest = 6 %}
+                {% elif c.phase_5 %}{% set highest = 5 %}
+                {% elif c.phase_4 %}{% set highest = 4 %}
+                {% elif c.phase_3 %}{% set highest = 3 %}
+                {% elif c.phase_2 %}{% set highest = 2 %}
+                {% elif c.phase_1 %}{% set highest = 1 %}
+                {% endif %}
+
+                <tr>
                     <td>{{ c.municipality }}</td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="1" {% if c.phase_1 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="2" {% if c.phase_2 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="3" {% if c.phase_3 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="4" {% if c.phase_4 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="5" {% if c.phase_5 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="6" {% if c.phase_6 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="7" {% if c.phase_7 %}checked{% endif %}></td>
-                    <td><input type="checkbox" class="phase-cb" data-phase="8" {% if c.phase_8 %}checked{% endif %}></td>
+                    <td>{{ c.province }}</td>
+                    <td>
+                        <select class="phase-dropdown" data-id="{{ c.id }}" data-province="{{ c.province }}">
+                            <option value="0" {% if highest == 0 %}selected{% endif %}>Geen fase bereikt</option>
+                            <option value="1" {% if highest == 1 %}selected{% endif %}>Fase 1: Gemeente geregistreerd via landingspagina</option>
+                            <option value="2" {% if highest == 2 %}selected{% endif %}>Fase 2: Lokale RKV afdeling geïnformeerd</option>
+                            <option value="3" {% if highest == 3 %}selected{% endif %}>Fase 3: Gemeente gecontacteerd door RKV</option>
+                            <option value="4" {% if highest == 4 %}selected{% endif %}>Fase 4: Samenwerkingsovereenkomst ondertekend</option>
+                            <option value="5" {% if highest == 5 %}selected{% endif %}>Fase 5: Communicatie plaatsgevonden</option>
+                            <option value="6" {% if highest == 6 %}selected{% endif %}>Fase 6: Minstens 20 vrijwilligers geregistreerd</option>
+                            <option value="7" {% if highest == 7 %}selected{% endif %}>Fase 7: Basisopleiding ingepland</option>
+                            <option value="8" {% if highest == 8 %}selected{% endif %}>Fase 8: Korps activeerbaar</option>
+                        </select>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -87,7 +104,7 @@
 </div>
 
 <div class="section-card">
-    <h3 style="margin-top: 0; margin-bottom: 15px;">3. Geografisch Overzicht</h3>
+    <h3 style="margin-top: 0; margin-bottom: 15px;">3. Geografisch Overzicht (Vlaanderen)</h3>
     <div id="map"></div>
 </div>
 
@@ -96,12 +113,23 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // --- UNSAVED CHANGES LOGICA ---
+    const phaseNames = {
+        0: 'Niet geïnteresseerd / Nog niet gestart',
+        1: '1. Gemeente geregistreerd via landingspagina',
+        2: '2. Lokale RKV afdeling geïnformeerd',
+        3: '3. Gemeente gecontacteerd door RKV',
+        4: '4. Samenwerkingsovereenkomst ondertekend',
+        5: '5. Communicatie plaatsgevonden',
+        6: '6. Minstens 20 vrijwilligers geregistreerd',
+        7: '7. Basisopleiding ingepland',
+        8: '8. Korps activeerbaar'
+    };
+
     let isDirty = false;
     let currentDiff = [];
 
-    document.querySelectorAll('.phase-cb').forEach(cb => {
-        cb.addEventListener('change', function() {
+    document.querySelectorAll('.phase-dropdown').forEach(sel => {
+        sel.addEventListener('change', function() {
             isDirty = true;
             document.getElementById('saveBtn').classList.add('active');
         });
@@ -111,30 +139,35 @@
         if (isDirty) { e.preventDefault(); e.returnValue = ''; }
     });
 
-    // --- EXCEL UPLOAD & DIFF ---
     async function uploadExcel() {
         const fileInput = document.getElementById('excelFile');
         if(!fileInput.files.length) return alert("Kies eerst een bestand!");
-        
+
         let formData = new FormData();
         formData.append("file", fileInput.files[0]);
-        
+
         try {
             let res = await fetch('/api/vrijwilligerskorpsen/upload', {method: 'POST', body: formData});
             let data = await res.json();
-            
+
             if(res.status !== 200) throw new Error(data.detail);
-            
+
             currentDiff = data.diff;
             let tbody = document.querySelector('#diffTable tbody');
             tbody.innerHTML = '';
-            
+
             if(currentDiff.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5">Geen wijzigingen gevonden t.o.v. de database.</td></tr>';
             } else {
                 currentDiff.forEach(d => {
                     let actionBadge = d.action === 'NIEUW' ? '<span class="badge badge-nieuw">NIEUW</span>' : '<span class="badge badge-update">UPDATE</span>';
-                    tbody.innerHTML += `<tr><td>${actionBadge}</td><td>${d.municipality}</td><td>${d.province}</td><td>Fase ${d.old_phase}</td><td style="font-weight:bold; color:#d32f2f;">Fase ${d.new_phase}</td></tr>`;
+                    tbody.innerHTML += `<tr>
+                        <td>${actionBadge}</td>
+                        <td>${d.municipality}</td>
+                        <td>${d.province}</td>
+                        <td style="font-size: 13px; color: #666;">${phaseNames[d.old_phase] || 'Geen'}</td>
+                        <td style="font-weight:bold; color:#d32f2f; font-size: 13px;">${phaseNames[d.new_phase] || 'Fase ' + d.new_phase}</td>
+                    </tr>`;
                 });
             }
             document.getElementById('diffContainer').style.display = 'block';
@@ -154,18 +187,16 @@
         } catch (e) { alert("Fout bij opslaan."); }
     }
 
-    // --- MANUELE SAVE ---
     async function saveManualChanges() {
         let payload = [];
-        document.querySelectorAll('.main-table tbody tr').forEach(tr => {
-            let id = tr.getAttribute('data-id');
-            let data = {id: id};
-            tr.querySelectorAll('.phase-cb').forEach(cb => {
-                data[`phase_${cb.getAttribute('data-phase')}`] = cb.checked;
+        document.querySelectorAll('.phase-dropdown').forEach(sel => {
+            payload.push({
+                id: sel.getAttribute('data-id'),
+                province: sel.getAttribute('data-province'),
+                highest_phase: parseInt(sel.value)
             });
-            payload.push(data);
         });
-        
+
         try {
             await fetch('/api/vrijwilligerskorpsen/save', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -174,42 +205,46 @@
             isDirty = false;
             document.getElementById('saveBtn').classList.remove('active');
             alert("Wijzigingen succesvol opgeslagen!");
-            window.location.reload(); // Reload map
+            window.location.reload();
         } catch(e) { alert("Opslaan mislukt."); }
     }
 
-    // --- MAP LOGICA ---
+    // MAP LOGICA
     const map = L.map('map').setView([51.0, 4.5], 8);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
     const phaseColors = {
+        0: '#dddddd', // Grijzig wit voor 'niet geïnteresseerd'
         1: '#ffcc80', 2: '#ffa726', 3: '#ff9800', 4: '#fb8c00',
-        5: '#f57c00', 6: '#e65100', 7: '#d84315', 8: '#4caf50' // Groen bij 8
+        5: '#f57c00', 6: '#e65100', 7: '#d84315', 8: '#4caf50'
     };
 
-    // Laaggroepen per fase voor toggle in menu
     const layerGroups = {};
-    for(let i = 1; i <= 8; i++) layerGroups[`Fase ${i}`] = L.layerGroup().addTo(map);
+    for(let i = 0; i <= 8; i++) {
+        layerGroups[phaseNames[i]] = L.layerGroup().addTo(map);
+    }
 
     fetch('/api/vrijwilligerskorpsen/map_data').then(res => res.json()).then(data => {
         L.geoJSON(data, {
             style: function(feature) {
                 let p = feature.properties.phase;
-                if(p === 0) return {fillColor: '#999', fillOpacity: 0.1, weight: 1, color: '#666'};
                 return {
-                    fillColor: phaseColors[p] || '#333',
-                    fillOpacity: 0.7,
-                    weight: 2,
-                    color: '#444'
+                    fillColor: phaseColors[p] || '#ccc',
+                    fillOpacity: p === 0 ? 0.3 : 0.7, // Geen interesse is iets transparanter
+                    weight: p === 0 ? 1 : 2,          // Dunnere randen voor ongeïnteresseerden
+                    color: p === 0 ? '#aaa' : '#444'
                 };
             },
             onEachFeature: function(feature, layer) {
                 let p = feature.properties.phase;
-                layer.bindTooltip(`<b>${feature.properties.municipality}</b><br>Huidige Fase: ${p > 0 ? p : 'Geen'}`);
-                // Wijs toe aan juiste layergroup als er een fase is
-                if(p > 0 && p <= 8) layerGroups[`Fase ${p}`].addLayer(layer);
+                let phaseText = phaseNames[p] || 'Onbekend';
+                layer.bindTooltip(`<b>${feature.properties.municipality}</b><br><span style="font-size: 11px;">Huidige Fase: ${phaseText}</span>`);
+
+                if(p >= 0 && p <= 8) {
+                    layerGroups[phaseNames[p]].addLayer(layer);
+                }
             }
         }).addTo(map);
 

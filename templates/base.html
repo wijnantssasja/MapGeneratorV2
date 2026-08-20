@@ -4,82 +4,219 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Rode Kruis Map Generator{% endblock %}</title>
+    <!-- FontAwesome voor strakke iconen -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h1 { color: #d32f2f; margin: 0; font-size: 22px; }
-        .nav-links a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; padding-bottom: 3px; }
-        .nav-links a:hover { color: #d32f2f; }
-        .nav-links a.active { color: #d32f2f; border-bottom: 2px solid #d32f2f; }
-        .user-info { display: flex; align-items: center; gap: 15px; font-size: 14px; }
-        .btn-logout { background-color: #d32f2f; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; }
-        .btn-logout:hover { background-color: #b71c1c; }
-        .content { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow-x: auto; }
-        
+        :root {
+            --primary-red: #d32f2f;
+            --primary-dark: #b71c1c;
+            --accent-blue: #1976d2;
+            --bg-color: #f4f4f9;
+            --text-main: #333333;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Moderne Navigatie Bar */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            background-color: var(--primary-red);
+            color: white;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+
+        h1 {
+            color: var(--primary-red);
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        /* Navigatie Links */
+        .nav-links {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #555;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-red);
+            background-color: #fff5f5;
+        }
+
+        .nav-links a.active {
+            color: var(--primary-red);
+            background-color: #ffebee;
+            border-bottom: none;
+        }
+
+        /* Gebruikersmenu rechts */
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 13px;
+            background: #f8f9fa;
+            padding: 6px 15px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-name {
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .user-action-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .user-action-link:hover {
+            opacity: 0.8;
+        }
+
+        .btn-logout {
+            background-color: var(--primary-red);
+            color: white;
+            padding: 6px 12px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-logout:hover {
+            background-color: var(--primary-dark);
+        }
+
+        /* Content Card */
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            overflow-x: auto;
+        }
+
         /* Gedeelde Tabel Styling */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f8f9fa; color: #333; }
-        tr:hover { background-color: #f1f1f1; }
-        .btn-edit { background-color: #1976d2; color: white; padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 12px; }
-        
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 14px;}
+        th { background-color: #f8f9fa; color: #333; font-weight: 600; }
+        tr:hover { background-color: #fafafa; }
+        .btn-edit { background-color: var(--accent-blue); color: white; padding: 6px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; font-weight: 600; }
+
         /* Gedeelde Formulier Styling */
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; font-size: 14px;}
-        input[type="text"], input[type="email"], input[type="number"], input[type="color"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn-submit { background-color: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .btn-cancel { background-color: #999; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-block; margin-right: 10px;}
-        .actions { margin-top: 30px; text-align: right; border-top: 1px solid #ddd; padding-top: 20px;}
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; font-size: 13px;}
+        input[type="text"], input[type="email"], input[type="number"], input[type="color"], select { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(25,118,210,0.1); }
+
+        .btn-submit { background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-submit:hover { opacity: 0.9; }
+
+        .btn-cancel { background-color: #777; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; text-decoration: none; display: inline-block; margin-right: 10px;}
+        .actions { margin-top: 30px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px;}
+
+        /* Responsieve aanpassing voor schermen */
+        @media (max-width: 1200px) {
+            .header { justify-content: center; }
+            .nav-links { justify-content: center; }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-{% if user %}
-<div class="header">
-    <div style="display: flex; align-items: center; gap: 20px;">
-        <h1>Rode Kruis Kaart</h1>
+    {% if user %}
+    <div class="header">
+        <div class="brand-container">
+            <div class="brand-logo">
+                <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+            <h1>Rode Kruis<br><span style="font-size: 12px; font-weight: 500; color: #666;">Map Generator</span></h1>
+        </div>
+
         <div class="nav-links">
-            <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-            <a href="/departments"
-               class="{% if '/departments' in request.url.path and not is_zetel|default(false) %}active{% endif %}">Afdelingen</a>
-            <a href="/provinciale-zetels"
-               class="{% if '/provinciale-zetels' in request.url.path or is_zetel|default(false) %}active{% endif %}">Prov.
-                Zetels</a>
-            <a href="/sit-locations" class="{% if '/sit-locations' in request.url.path %}active{% endif %}">SIT
-                Locaties</a>
-            <a href="/regions" class="{% if '/regions' in request.url.path %}active{% endif %}">Regio's</a>
-            <a href="/clusters" class="{% if '/clusters' in request.url.path %}active{% endif %}">Clusters</a>
-            <a href="/vrijwilligerskorpsen"
-               class="{% if '/vrijwilligerskorpsen' in request.url.path %}active{% endif %}">Vrijwilligerskorpsen</a>
-            <a href="/audit-logs" class="{% if '/audit-logs' in request.url.path %}active{% endif %}">Logboek</a>
+            <a href="/" class="{% if request.url.path == '/' %}active{% endif %}"><i class="fa-solid fa-house"></i> Dashboard</a>
+            <a href="/departments" class="{% if '/departments' in request.url.path and not is_zetel|default(false) %}active{% endif %}"><i class="fa-solid fa-building"></i> Afdelingen</a>
+            <a href="/provinciale-zetels" class="{% if '/provinciale-zetels' in request.url.path or is_zetel|default(false) %}active{% endif %}"><i class="fa-solid fa-landmark"></i> Prov. Zetels</a>
+            <a href="/sit-locations" class="{% if '/sit-locations' in request.url.path %}active{% endif %}"><i class="fa-solid fa-truck-medical"></i> SIT Locaties</a>
+            <a href="/regions" class="{% if '/regions' in request.url.path %}active{% endif %}"><i class="fa-solid fa-map"></i> Regio's</a>
+            <a href="/clusters" class="{% if '/clusters' in request.url.path %}active{% endif %}"><i class="fa-solid fa-object-group"></i> Clusters</a>
+            <a href="/vrijwilligerskorpsen" class="{% if '/vrijwilligerskorpsen' in request.url.path %}active{% endif %}"><i class="fa-solid fa-users-line"></i> Vrijwilligerskorpsen</a>
+            <a href="/audit-logs" class="{% if '/audit-logs' in request.url.path %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i> Logboek</a>
             {% if user and user.role == 'admin' %}
-            <a href="/users" class="{% if '/users' in request.url.path %}active{% endif %}" style="color: #1976d2;">Gebruikers</a>
+            <a href="/users" class="{% if '/users' in request.url.path %}active{% endif %}" style="color: var(--accent-blue);"><i class="fa-solid fa-user-gear"></i> Gebruikers</a>
             {% endif %}
         </div>
-    </div>
-    <div class="user-menu" style="float: right; margin-top: 15px; margin-right: 20px;">
-        {% if user %}
-        <span style="color: #555; margin-right: 20px;">
-            <i class="fa fa-user"></i> <b>{{ user.username }}</b>
-        </span>
-        <a href="/profile/change-password"
-           style="color: #1976d2; text-decoration: none; font-weight: bold; margin-right: 15px;"
-           title="Wachtwoord wijzigen">
-            <i class="fa fa-key"></i> Wachtwoord
-        </a>
-        <a href="/logout"
-           style="background-color: #d32f2f; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;">
-            <i class="fa fa-sign-out-alt"></i> Uitloggen
-        </a>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
 
-<div class="content" {% block content_style %}{% endblock %}>
-    {% block content %}{% endblock %}
-</div>
+        <div class="user-menu">
+            <span class="user-name">
+                <i class="fa-solid fa-user-circle" style="font-size: 16px; color: #777;"></i> <b>{{ user.username }}</b>
+            </span>
+            <a href="/profile/change-password" class="user-action-link" title="Wachtwoord wijzigen">
+                <i class="fa-solid fa-key"></i> Wachtwoord
+            </a>
+            <a href="/logout" class="btn-logout">
+                <i class="fa-solid fa-right-from-bracket"></i> Uitloggen
+            </a>
+        </div>
+    </div>
+    {% endif %}
 
-{% block scripts %}{% endblock %}
-</body>
-</html>
+    <div class="content" {% block content_style %}{% endblock %}>
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body> </html>
