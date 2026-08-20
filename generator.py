@@ -14,20 +14,31 @@ import topojson as tp
 from shapely.wkt import loads, dumps
 from shapely.geometry import Point
 
+from geopy.geocoders import Nominatim
 import folium
 from folium.plugins import StripePattern, GroupedLayerControl, Search
 from branca.element import Element, MacroElement
 from jinja2 import Template
 
 # Database imports
-from database import SessionLocal, engine, Department, Vehicle, SitLocation, Service
+from database import SessionLocal, engine, Department, Vehicle, SitLocation, Service, CoordinateCache
 
 # Onderdruk storende CRS waarschuwingen
 warnings.filterwarnings("ignore", message=".*Geometry is in a geographic CRS.*")
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+geolocator = Nominatim(user_agent="rk_map_generator_backend", timeout=10)
 
 OUTPUT_DIR = "/opt/MapGenerator/static"
 MAX_STORAGE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
+
+# =========================================================
+# GLOBALE CONFIG (Wordt gevuld door main.py)
+# =========================================================
+CONFIG = {
+    'settings': {'public_version': False},
+    'paths': {},
+    'vrijwilligerskorpsen': []
+}
 
 
 # =========================================================
@@ -136,6 +147,36 @@ class MapEnhancer(MacroElement):
     """)
 
 
+
+
+def get_coords_for_address(addr_str, db_session):
+    if not addr_str or not addr_str.strip():
+        return None, None
+
+    addr_clean = addr_str.strip()
+
+    # 1. Zoek in Cache
+    cached = db_session.query(CoordinateCache).filter(CoordinateCache.address == addr_clean).first()
+    if cached:
+        return cached.lat, cached.lon
+
+    # 2. Niet in cache? Zoek live op via API (met rate limiting)
+    full_address = f"{addr_clean}, België"
+    try:
+        time.sleep(1.1)
+        location = geolocator.geocode(full_address)
+        if location:
+            # 3. Sla direct op in de cache voor de volgende keer
+            new_cache = CoordinateCache(address=addr_clean, lat=location.latitude, lon=location.longitude)
+            db_session.add(new_cache)
+            db_session.commit()
+            return location.latitude, location.longitude
+    except Exception as e:
+        print(f"[WARN] Geocode Fout bij SIT '{full_address}': {e}")
+
+    return None, None
+
+
 def deduplicate_geojson_in_html(html_path):
     try:
         with open(html_path, 'r', encoding='utf-8') as f:
@@ -186,12 +227,19 @@ def background_generate_map(province_filter: str, username: str):
     db = SessionLocal()
     enforce_fifo_storage()
 
+    # HAAL INSTELLINGEN UIT CONFIG
+    is_public = CONFIG.get('settings', {}).get('public_version', False)
+    vk_muns = [m.lower() for m in CONFIG.get('vrijwilligerskorpsen', [])]
+
     prov_name = "Vlaanderen" if province_filter.lower() == "vlaanderen" else province_filter
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"Kaart_{prov_name}_{timestamp}.html"
+
+    # Gebruik de prefix uit main.py (bijv. Kaart_Publiek_Vlaanderen)
+    base_filename = CONFIG.get('paths', {}).get('base_filename', f"Kaart_{prov_name}")
+    filename = f"{base_filename}_{timestamp}.html"
     output_path = os.path.join(OUTPUT_DIR, filename)
 
-    print(f"[GENERATOR] Start generatie voor {prov_name} -> {filename}")
+    print(f"[GENERATOR] Start generatie voor {prov_name} -> {filename} (Publiek: {is_public})")
 
     try:
         # 1. Haal data op uit Database
@@ -211,7 +259,7 @@ def background_generate_map(province_filter: str, username: str):
 
         # 2. Haal GeoJSON shapes op (Nu met 'hoofdgem' exact gemapt op je database schema)
         sql = f"""
-            SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente, department_id, geom 
+            SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente,postcode, department_id, geom 
             FROM department_shapes 
             WHERE department_id IN ({','.join(dept_ids)})
         """
@@ -235,6 +283,7 @@ def background_generate_map(province_filter: str, username: str):
                 "cluster_name": d.name,
                 "group_name": group_val,
                 "working_cluster_name": cluster_val,
+                "entiteitnummer": d.entiteitnummer,
                 "province": d.province,
                 "color": d.color or "#d32f2f",
                 "type": d.type,
@@ -378,7 +427,7 @@ def background_generate_map(province_filter: str, username: str):
                 title_text = f"Provinciale Zetel {row['cluster_name']}" if is_zetel else f"Rode Kruis-{row['cluster_name']}"
 
                 icons_html = ""
-                if row['services']:
+                if not is_public and row['services']:
                     icons_html = "<div style='margin-top: 10px; margin-bottom: 10px;'>"
                     for service in row['services']:
                         safe_name = service.replace(" ", "_").replace("-", "_")
@@ -547,7 +596,6 @@ def background_generate_map(province_filter: str, username: str):
                         folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
                             html=f'<div style="{base_style} font-size: 14px; font-weight: bold; color: #0066FF; text-shadow: 2px 2px 4px #fff;">{name}</div>')).add_to(
                             fg_label_sam)
-
         # 6. Locaties, Voertuigen & Patronen (Markers)
         for dept in depts:
             is_zetel = (dept.type == "provinciale_zetel")
@@ -561,13 +609,48 @@ def background_generate_map(province_filter: str, username: str):
                     final_lat, final_lon = centroid.y, centroid.x
 
             if final_lat and final_lon:
-                loc_html = f"<div style='font-family: sans-serif; min-width: 200px;'><h4 style='color: #d32f2f; border-bottom: 2px solid #d32f2f;'>{title_text}</h4><b>Adres:</b> {dept.address or 'Onbekend'}</div>"
+                # --- Zelfde pop-up layout als polygons, zonder gemeente ---
+                marker_icons_html = ""
+                services = [s.name.lower() for s in dept.services]
+
+                if not is_public and services:
+                    marker_icons_html = "<div style='margin-top: 10px; margin-bottom: 10px;'>"
+                    for service in services:
+                        safe_name = service.replace(" ", "_").replace("-", "_")
+                        if service in loaded_icons:
+                            marker_icons_html += f"<div class='rk-icon rk-icon-{safe_name}' title='{service.capitalize()}'></div>"
+                        else:
+                            marker_icons_html += f"<span title='{service.capitalize()}' style='background:#eee; padding:2px 5px; border-radius:3px; margin-right:5px; font-size:11px; cursor: help;'>{service.capitalize()}</span>"
+                    marker_icons_html += "</div>"
+
+                marker_website = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"
+                marker_volunteer = marker_website + "/wat-kan-jij-doen/word-vrijwilliger/"
+
+                marker_web_line = "" if is_zetel else f"<b>Website:</b> <a href='{marker_website}' target='_blank' class='rk-popup-link'>{marker_website}</a><br>"
+                marker_vol_btn = "" if is_zetel else f'<div class="rk-popup-btn-container"><a href="{marker_volunteer}" target="_blank" class="rk-popup-btn">Word vrijwilliger</a></div>'
+
+                dept_email = dept.email or ""
+                dept_address = dept.address or "Geen adres"
+
+                loc_html = f"""
+                <div class="rk-popup-container">
+                    <h4 class="rk-popup-title">{title_text}</h4>
+                    {marker_icons_html}
+                    <div class="rk-popup-body">
+                        <b>Adres:</b> {dept_address}<br><b>Email:</b> <a href="mailto:{dept_email}" class="rk-popup-link">{dept_email}</a><br>
+                        {marker_web_line}
+                    </div>
+                    {marker_vol_btn}
+                </div>
+                """
+                # ---------------------------------------------------------------
+
                 folium.Marker(
                     location=[final_lat, final_lon],
                     icon=folium.Icon(icon='star' if is_zetel else 'plus', prefix='fa',
                                      color='blue' if is_zetel else 'red'),
                     tooltip=title_text,
-                    popup=folium.Popup(loc_html, max_width=300)
+                    popup=folium.Popup(loc_html, max_width=350)
                 ).add_to(fg_locaties)
 
             # Ziekenwagens (Gegroepeerd per adres met badge)
@@ -584,8 +667,8 @@ def background_generate_map(province_filter: str, username: str):
 
             for (zw_addr, z_lat, z_lon), vehicles in grouped_zws.items():
                 vehicles_html = "".join([
-                                            f"<li style='margin-bottom: 3px;'><b>{v.name}</b> <span style='color: #666; font-size: 11px;'>(Vlootnr: {v.fleet_nr or 'Onbekend'})</span></li>"
-                                            for v in vehicles])
+                    f"<li style='margin-bottom: 3px;'><b>{v.name}</b> <span style='color: #666; font-size: 11px;'>(Vlootnr: {v.fleet_nr or 'Onbekend'})</span></li>"
+                    for v in vehicles])
                 zw_popup_html = f"<div style='font-family: sans-serif; min-width: 200px;'><h4 style='margin: 0 0 5px 0; color: darkred; border-bottom: 1px solid darkred;'>{title_text}</h4><div style='font-size: 13px;'><b>Locatie:</b> {zw_addr}<ul style='margin-top: 5px; padding-left: 20px;'>{vehicles_html}</ul></div></div>"
 
                 count = len(vehicles)
@@ -637,15 +720,23 @@ def background_generate_map(province_filter: str, username: str):
                                        style_function=lambda x, p=pat_uitleen: {'fillPattern': p, 'fillOpacity': 1.0,
                                                                                 'color': 'none', 'weight': 0},
                                        interactive=False).add_to(fg_uitleen)
-                    if 'vrijwilligerskorps' in services or 'vrijwilligerskorpsen' in services:
-                        folium.GeoJson(c_gdf, style_function=lambda x: {'fillColor': '#4CAF50', 'fillOpacity': 0.4,
-                                                                        'color': 'none', 'weight': 0},
-                                       interactive=False, tooltip=f"Vrijwilligerskorps Actief: {dept.name}").add_to(
-                            fg_vrijwilligerskorps)
 
         # 7. SIT Locaties (Robuust met voertuigen)
+        print(f"Is de kaart publiek? {is_public}")
+        print(f"Aantal SIT locaties ingeladen uit de database: {len(sits)}")
         for sit in sits:
-            if sit.lat and sit.lon:
+            print(f"Naam: {sit.name}, Lat: {sit.lat}, Lon: {sit.lon}")
+        # 7. SIT Locaties (Robuust met coördinaten-cache en voertuigen)
+        for sit in sits:
+            # Check eerst de manuele invoer
+            final_lat, final_lon = sit.lat, sit.lon
+
+            # Als lat/lon leeg zijn, maar er is een adres, haal het uit de cache/API
+            if not final_lat and sit.address:
+                final_lat, final_lon = get_coords_for_address(sit.address, db)
+
+            # Bouw de marker pas als we effectief coördinaten hebben gevonden
+            if final_lat and final_lon:
                 sit_type = str(sit.type) if sit.type else 'SIT'
                 sit_name = str(sit.name) if sit.name else 'Onbekend'
                 sit_address = str(sit.address) if sit.address else 'Geen adres'
@@ -655,41 +746,77 @@ def background_generate_map(province_filter: str, username: str):
                 bg_style = "background: linear-gradient(90deg, #d32f2f 50%, #1976d2 50%);" if 'med' in sit_type.lower() and 'log' in sit_type.lower() else f"background-color: {header_color};"
                 sit_pin = f"<div style='position: absolute; transform: translate(-50%, -100%);'><div style='{bg_style} color: white; border: 2px solid white; border-radius: 4px; padding: 2px 4px; font-size: 11px; font-weight: bold; box-shadow: 1px 1px 4px rgba(0,0,0,0.4);'>SIT</div><div style='width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid {header_color}; margin: 0 auto;'></div></div>"
 
-                # Voertuigen toevoegen aan pop-up indien aanwezig
+                # --- Robuuste check voor voertuigen ---
                 vehicles_html = ""
-                if hasattr(sit, 'sit_vehicles') and sit.sit_vehicles:
+                sit_vehs = getattr(sit, 'sit_vehicles', getattr(sit, 'vehicles', []))
+
+                if sit_vehs:
                     vehicles_html = "<ul style='margin-top: 5px; padding-left: 20px;'>"
-                    for v in sit.sit_vehicles:
+                    for v in sit_vehs:
                         vehicles_html += f"<li style='margin-bottom: 3px;'><b>{v.name}</b> <span style='color: #666; font-size: 11px;'>(Vlootnr: {v.fleet_nr or 'Onbekend'})</span></li>"
                     vehicles_html += "</ul>"
 
                 sit_popup_html = f"""
-                <div style='font-family: sans-serif; min-width: 200px;'>
-                    <h4 style='margin: 0 0 5px 0; color: {header_color}; border-bottom: 1px solid {header_color}; padding-bottom: 5px;'>{sit_name}</h4>
-                    <div style='font-size: 13px;'>
-                        <b>Type:</b> {sit_type}<br><b>Adres:</b> {sit_address}
-                        {vehicles_html}
+                    <div style='font-family: sans-serif; min-width: 200px;'>
+                        <h4 style='margin: 0 0 5px 0; color: {header_color}; border-bottom: 1px solid {header_color}; padding-bottom: 5px;'>{sit_name}</h4>
+                        <div style='font-size: 13px;'>
+                            <b>Type:</b> {sit_type}<br><b>Adres:</b> {sit_address}
+                            {vehicles_html}
+                        </div>
                     </div>
-                </div>
-                """
+                    """
+
+                # Gebruik final_lat en final_lon in plaats van sit.lat en sit.lon
                 folium.Marker(
-                    location=[sit.lat, sit.lon],
+                    location=[final_lat, final_lon],
                     icon=folium.DivIcon(html=sit_pin, class_name="empty"),
                     tooltip=f"{sit_type}: {sit_name}",
                     popup=folium.Popup(sit_popup_html, max_width=300)
                 ).add_to(fg_sit)
 
         # 8. ZOEKFUNCTIE (Geïntegreerd)
+        # 8. ZOEKFUNCTIE (Geïntegreerd)
         if not gdf_selected.empty:
             search_features = []
+
+            # 1. Deelgemeenten
             for idx, row in gdf_selected.iterrows():
                 display_name = f"{row['deelgemeente']} (Deelgemeente van {row['mun_label']})"
                 search_features.append({"search_name": display_name, "geometry": row.geometry})
+
+            # 2. Hoofdgemeenten
             for name, group in gdf_selected.groupby('mun_label'):
                 search_features.append(
                     {"search_name": f"{name} (Hoofdgemeente)", "geometry": group.geometry.union_all()})
+
+            # 3. Afdelingen (Met entiteitnummer voor interne kaarten)
+            # Maak eerst een makkelijke map aan om het entiteitnummer per cluster op te zoeken
+            entiteit_map = df_depts.set_index('cluster_name')[
+                'entiteitnummer'].to_dict() if not df_depts.empty else {}
+
             for name, group in gdf_selected.groupby('cluster_name'):
-                search_features.append({"search_name": f"{name} (Afdeling)", "geometry": group.geometry.union_all()})
+                entiteit_nr = entiteit_map.get(name)
+
+                # Check of de kaart intern is én of er een entiteitnummer is
+                if not is_public and entiteit_nr:
+                    search_string = f"{name} (Afdeling - {entiteit_nr})"
+                else:
+                    search_string = f"{name} (Afdeling)"
+
+                search_features.append({"search_name": search_string, "geometry": group.geometry.union_all()})
+
+            # 4. Postcodes (Zowel intern als publiek)
+            if 'postcode' in gdf_selected.columns:
+                for pc, group in gdf_selected.groupby('postcode'):
+                    pc_str = str(pc).strip()
+                    # Filter lege waarden ('None', 'nan') eruit
+                    if pc_str and pc_str.lower() not in ["none", "nan"]:
+                        muns = ", ".join(sorted(group['mun_label'].dropna().unique()))
+                        geom = group.geometry.union_all()
+                        search_features.append({
+                            "search_name": f"{pc_str} (Postcode - {muns})",
+                            "geometry": geom
+                        })
 
             search_gdf = gpd.GeoDataFrame(search_features, crs=gdf_selected.crs).to_crs(epsg=4326)
             search_layer = folium.GeoJson(search_gdf, name="Verborgen Zoeklaag", show=True,
@@ -775,25 +902,51 @@ def background_generate_map(province_filter: str, username: str):
             m.get_root().html.add_child(Element(custom_search_js))
 
         # 9. Lagen Toevoegen & Menu genereren
-        layers = [
-            fg_afdelingen, fg_basis, fg_geen_afd, fg_werkingsgebieden, fg_regio, fg_provincies,
-            fg_locaties, fg_vrijwilligerskorps, fg_ziekenwagens, fg_sit, fg_jeugd, fg_zorgbib,
-            fg_brugfiguren, fg_internationaal, fg_uitleen, fg_geen_labels, fg_label_gem, fg_label_afd, fg_label_sam
-        ]
-        [fg.add_to(m) for fg in layers]
+        # --- VRIJWILLIGERSKORPSEN LOGICA (Fase 4+) ---
+        if not is_public and not gdf_selected.empty:
+            for mun_name, group in gdf_selected.groupby('mun_label'):
+                if str(mun_name).lower() in vk_muns:
+                    v_gdf = gpd.GeoDataFrame({'geometry': [group.geometry.union_all()]}, crs=4326)
+                    folium.GeoJson(
+                        v_gdf,
+                        style_function=lambda x: {'fillColor': '#4CAF50', 'fillOpacity': 0.4, 'color': 'none',
+                                                  'weight': 0},
+                        interactive=False,
+                        tooltip=f"Vrijwilligerskorps (Fase 4+): {mun_name}"
+                    ).add_to(fg_vrijwilligerskorps)
+
+        # Lagen Toevoegen & Menu genereren (Dynamisch voor Publiek/Intern)
+        layers_to_add = [fg_afdelingen, fg_basis, fg_geen_afd, fg_provincies, fg_locaties, fg_geen_labels, fg_label_gem,
+                         fg_label_afd]
+
+        if not is_public:
+            layers_to_add.extend([
+                fg_werkingsgebieden, fg_regio, fg_vrijwilligerskorps, fg_ziekenwagens, fg_sit,
+                fg_jeugd, fg_zorgbib, fg_brugfiguren, fg_internationaal, fg_uitleen, fg_label_sam
+            ])
+
+        for fg in layers_to_add:
+            fg.add_to(m)
 
         MapEnhancer().add_to(m)
         EasyPrint(filename=f"RodeKruis_{prov_name}_{timestamp}").add_to(m)
 
+        # Menu opbouw
         groups_dict = {
             'Basiskaart': [tl_licht, tl_osm, tl_geen],
             'Afdelingen': [fg_afdelingen, fg_basis, fg_geen_afd],
-            'Vrijwilligerskorpsen': [fg_vrijwilligerskorps],
-            'Overlay': [fg_locaties, fg_werkingsgebieden, fg_regio],
-            'Disciplines': [fg_ziekenwagens, fg_sit, fg_jeugd, fg_zorgbib, fg_brugfiguren, fg_internationaal,
-                            fg_uitleen],
-            'Tekst Labels': [fg_geen_labels, fg_label_gem, fg_label_afd, fg_label_sam]
+            'Tekst Labels': [fg_geen_labels, fg_label_gem, fg_label_afd]
         }
+
+        if not is_public:
+            groups_dict['Vrijwilligerskorpsen'] = [fg_vrijwilligerskorps]
+            groups_dict['Overlay'] = [fg_locaties, fg_werkingsgebieden, fg_regio]
+            groups_dict['Disciplines'] = [fg_ziekenwagens, fg_sit, fg_jeugd, fg_zorgbib, fg_brugfiguren,
+                                          fg_internationaal, fg_uitleen]
+            groups_dict['Tekst Labels'].append(fg_label_sam)
+        else:
+            groups_dict['Overlay'] = [fg_locaties]
+
         if prov_name == 'Vlaanderen':
             groups_dict['Overlay'].append(fg_provincies)
 
