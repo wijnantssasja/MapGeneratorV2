@@ -29,7 +29,18 @@
     <tr>
         <td><strong>{{ sit.name }}</strong></td>
         <td>{{ sit.province or 'Onbekend' }}</td>
-        <td>{{ sit.type or '-' }}</td>
+        <td>
+            {% set s_type = (sit.type or '') | lower %}
+            {% if 'med' in s_type %}
+            <span style="background-color: #d32f2f; color: white; padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin: 2px;">SIT-MED</span>
+            {% endif %}
+            {% if 'log' in s_type %}
+            <span style="background-color: #1976d2; color: white; padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin: 2px;">SIT-LOG</span>
+            {% endif %}
+            {% if 'med' not in s_type and 'log' not in s_type %}
+            -
+            {% endif %}
+        </td>
         <td>{{ sit.address or '-' }}</td>
         <td>
             <a href="/sit-locations/edit/{{ sit.id }}" class="btn-edit" {% if user.role not in ['admin', 'nationaal']
