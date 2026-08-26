@@ -126,26 +126,45 @@
         <div style="margin-bottom: 10px; font-size: 14px; color: #555;">
             Klik op een gemeente om deze toe te voegen of te verwijderen.
         </div>
-
-        <!-- Legende -->
-        <div style="display: flex; gap: 20px; font-size: 13px; margin-bottom: 15px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(211, 47, 47, 0.6); border: 1px solid #b71c1c;"></div>
-                Deze Afdeling
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(25, 118, 210, 0.4); border: 1px solid #0d47a1;"></div>
-                Andere Afdeling
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(204, 204, 204, 0.3); border: 1px solid #999999;"></div>
-                Vrij / Leeg
-            </div>
+        <!-- Placeholder die getoond wordt als er GEEN polygonen gekoppeld zijn -->
+        <div id="no_map_placeholder"
+             style="display: none; background: #f8f9fa; padding: 15px; border: 1px dashed #ccc; border-radius: 4px; margin-bottom: 20px; text-align: center; color: #666;">
+            <p><em>Er is nog geen werkingsgebied gekoppeld aan deze afdeling.</em></p>
+            {% if not readonly %}
+            <button type="button"
+                    onclick="document.getElementById('map_wrapper').style.display='block'; document.getElementById('no_map_placeholder').style.display='none'; map.invalidateSize();"
+                    style="background-color: #1976d2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 10px;">
+                Toon kaart om gebied te koppelen
+            </button>
+            {% endif %}
         </div>
 
-        <!-- Kaart Container -->
-        <div id="editMap"
-             style="height: 500px; width: 100%; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 20px;"></div>
+        <!-- De wrapper rondom de kaart en legende -->
+        <div id="map_wrapper">
+            <div style="margin-bottom: 10px; font-size: 14px; color: #555;">
+                Klik op een gemeente om deze toe te voegen of te verwijderen.
+            </div>
+
+            <!-- Legende -->
+            <div style="display: flex; gap: 20px; font-size: 13px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(211, 47, 47, 0.6); border: 1px solid #b71c1c;"></div>
+                    Deze Afdeling
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(25, 118, 210, 0.4); border: 1px solid #0d47a1;"></div>
+                    Andere Afdeling
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; border-radius: 3px; background: rgba(204, 204, 204, 0.3); border: 1px solid #999999;"></div>
+                    Vrij / Leeg
+                </div>
+            </div>
+
+            <!-- Kaart Container -->
+            <div id="editMap"
+                 style="height: 500px; width: 100%; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 20px;"></div>
+        </div>
         {% else %}
         <div style="background: #f8f9fa; padding: 15px; border: 1px dashed #ccc; border-radius: 4px; margin-bottom: 20px; text-align: center; color: #666;">
             <p><em>De interactieve kaart wordt beschikbaar zodra je deze nieuwe afdeling voor de eerste keer
@@ -349,15 +368,26 @@
                 const response = await fetch(`/api/departments/${DEPARTMENT_ID}/shapes`);
                 const data = await response.json();
 
+                const currentFeatures = data.features.filter(f => f.properties.status === 'current');
+
+                // Check of we de kaart moeten verbergen
+                if (currentFeatures.length === 0) {
+                    document.getElementById('map_wrapper').style.display = 'none';
+                    document.getElementById('no_map_placeholder').style.display = 'block';
+                }
+
                 geojsonLayer = L.geoJSON(data, {
                     style: getStyle,
                     onEachFeature: onEachFeature
                 }).addTo(map);
 
-                // Zoom automatisch in op de polygonen die bij DEZE afdeling horen
-                const currentFeatures = data.features.filter(f => f.properties.status === 'current');
+                // Zoom in op de polygonen
                 if (currentFeatures.length > 0) {
                     const tempLayer = L.geoJSON(currentFeatures);
+                    map.fitBounds(tempLayer.getBounds(), { padding: [30, 30] });
+                } else if (data.features.length > 0) {
+                    // Fallback zoom voor als de gebruiker de kaart handmatig open klikt
+                    const tempLayer = L.geoJSON(data.features);
                     map.fitBounds(tempLayer.getBounds(), { padding: [30, 30] });
                 }
             } catch (error) {
