@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if readonly %}Bekijk{% else %}Bewerk{% endif %} Afdeling - Rode Kruis Map Generator{% endblock %}
+{% block title %}{% if readonly %}Bekijk{% else %}Bewerk{% endif %} {% if is_zetel %}Provinciale Zetel{% else %}Afdeling{% endif %} - Rode Kruis Map Generator{% endblock %}
 
 {% block content %}
 <!-- Leaflet CSS inladen -->
@@ -129,7 +129,8 @@
         <!-- Placeholder die getoond wordt als er GEEN polygonen gekoppeld zijn -->
         <div id="no_map_placeholder"
              style="display: none; background: #f8f9fa; padding: 15px; border: 1px dashed #ccc; border-radius: 4px; margin-bottom: 20px; text-align: center; color: #666;">
-            <p><em>Er is nog geen werkingsgebied gekoppeld aan deze afdeling.</em></p>
+            <p><em>Er is nog geen werkingsgebied gekoppeld aan deze {% if is_zetel %}provinciale zetel{% else
+                %}afdeling{% endif %}.</em></p>
             {% if not readonly %}
             <button type="button"
                     onclick="document.getElementById('map_wrapper').style.display='block'; document.getElementById('no_map_placeholder').style.display='none'; map.invalidateSize();"
@@ -243,7 +244,7 @@
                 Verwijder {{ entity_name }}
             </button>
             {% endif %}
-            <a href="/departments" class="btn-cancel"
+            <a href="{% if is_zetel %}/provinciale-zetels{% else %}/departments{% endif %}" class="btn-cancel"
                style="background-color: #777; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-right: 10px;">Annuleren</a>
             <button type="submit" class="btn-submit"
                     style="background-color: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">

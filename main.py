@@ -372,7 +372,8 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
 
     log_action(db, current_user.username, "CREATE", "Afdeling", new_dept.name, "Nieuwe afdeling/fusie aangemaakt.")
     db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+    target_url = "/provinciale-zetels" if new_dept.type == "provinciale_zetel" else "/departments"
+    return RedirectResponse(url=target_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/departments/edit/{dept_id}")
@@ -447,7 +448,8 @@ async def update_department(request: Request, dept_id: int, db: Session = Depend
     log_action(db, current_user.username, "UPDATE", "Afdeling", dept.name,
                f"Gewijzigd: {', '.join(changes) if changes else 'Subdata'}")
     db.commit()
-    return RedirectResponse(url="/departments", status_code=status.HTTP_303_SEE_OTHER)
+    target_url = "/provinciale-zetels" if dept.type == "provinciale_zetel" else "/departments"
+    return RedirectResponse(url=target_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 # =========================================================
