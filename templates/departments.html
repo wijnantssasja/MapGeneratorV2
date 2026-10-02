@@ -33,7 +33,7 @@
     <tr>
         <td><strong>{{ dept.name }}</strong></td>
         <td>{{ dept.province }}</td>
-        <td>{{ dept.group or '-' }}</td>
+        <td>{{ dept.region_rel.name if dept.region_rel else '-' }}</td>
         <td>{{ dept.address or '-' }}</td>
         <td>
             {% if dept.color %}

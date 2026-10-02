@@ -373,10 +373,19 @@ def background_generate_map(province_filter: str, username: str):
         m.get_root().header.add_child(custom_css)
 
         # Base Layers
-        tl_licht = folium.TileLayer('cartodbpositron', name='Lichte kaart', control=False, show=True).add_to(m)
-        tl_osm = folium.TileLayer(tiles='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                                  attr='&copy; OpenStreetMap contributors &copy; CARTO', name='Standaard kaart',
-                                  control=False, show=False).add_to(m)
+        tl_licht = folium.TileLayer(
+            tiles='https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2hjn_1_d9c0111a9320e6756f220769',
+            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            name='Lichte kaart',
+            control=False,
+            show=True,
+            subdomains='abcd',
+            max_zoom=20
+        ).add_to(m)
+        tl_osm = folium.TileLayer(
+            tiles='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2hjn_1_d9c0111a9320e6756f220769',
+            attr='&copy; OpenStreetMap contributors &copy; CARTO', name='Standaard kaart',
+            control=False, show=False).add_to(m)
         tl_geen = folium.TileLayer(
             tiles="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
             attr='Geen Achtergrond', name='Geen kaart', control=False, show=False).add_to(m)

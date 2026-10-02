@@ -45,9 +45,22 @@
                 </select>
             </div>
             <div class="form-group" style="flex: 1;">
-                <label for="group">Regio (Group):</label>
-                <input type="text" id="group" name="group" value="{{ dept.group if dept else '' }}" {% if readonly
-                       %}disabled{% endif %}>
+                <label for="region_id">Regio:</label>
+                <select id="region_id" name="region_id" {% if readonly %}disabled{% endif %}
+                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="" {% if not dept or not dept.region_id %}selected{% endif %}>Geen regio</option>
+                    {% for reg in regions %}
+                    <option value="{{ reg.id }}" {% if dept and dept.region_id== reg.id %}selected{% endif %}>{{
+                        reg.name }} ({{ reg.province }})
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not readonly %}
+                <div style="font-size: 11px; margin-top: 4px;">
+                    <a href="/regions" target="_blank" style="color: #1976d2; text-decoration: none;">Nieuwe regio
+                        aanmaken?</a>
+                </div>
+                {% endif %}
             </div>
             <div class="form-group" style="flex: 1;">
                 <label for="entiteitnummer">Entiteitnummer:</label>
@@ -306,8 +319,10 @@
 
         let map = L.map('editMap').setView([51.0, 4.5], 9);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2hjn_1_d9c0111a9320e6756f220769', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
         }).addTo(map);
 
         let geojsonLayer;

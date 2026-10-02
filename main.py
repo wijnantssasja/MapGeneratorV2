@@ -264,8 +264,10 @@ async def new_department_page(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     is_zetel = request.query_params.get("type") == "zetel"
+    regions = db.query(Region).all()
     return templates.TemplateResponse(request=request, name="edit_department.html",
-                                      context={"user": current_user, "dept": None, "is_zetel": is_zetel})
+                                      context={"user": current_user, "dept": dept, "readonly": readonly,
+                                               "is_zetel": is_zetel, "regions": regions})
 
 
 # --- SIT LOCATIES TOEVOEGEN & VERWIDEREN ---
@@ -337,6 +339,7 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
     new_dept = Department(
         name=form.get("name"), province=province, group=form.get("group"),
         address=form.get("address"), email=form.get("email"), telephone=form.get("telephone"),
+        region_id=int(form.get("region_id")) if form.get("region_id") else None,
         entiteitnummer=form.get("entiteitnummer"), color=form.get("color"),
         type="provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling",
         transparent=True if form.get("transparent") else False,
@@ -416,6 +419,7 @@ async def update_department(request: Request, dept_id: int, db: Session = Depend
     dept.color = form.get("color")
     dept.type = "provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling"
     dept.transparent = True if form.get("transparent") else False
+    dept.region_id = int(form.get("region_id")) if form.get("region_id") else None
 
     # 2. Voertuigen (Enkel opslaan wat is getypt)
     db.query(Vehicle).filter(Vehicle.department_id == dept.id).delete()
@@ -542,8 +546,10 @@ async def merge_select_page(request: Request, db: Session = Depends(get_db)):
                                                   Department.type != "provinciale_zetel").order_by(
             Department.name).all()
     is_zetel = (Department.type == "provinciale_zetel")
-    return templates.TemplateResponse(request=request, name="merge_departments.html",
-                                      context={"user": current_user, "departments": departments, "is_zetel": is_zetel})
+    regions = db.query(Region).all()
+    return templates.TemplateResponse(request=request, name="edit_department.html",
+                                      context={"user": current_user, "dept": dept, "readonly": readonly,
+                                               "is_zetel": is_zetel, "regions": regions})
 
 
 @app.post("/departments/merge", response_class=HTMLResponse)
@@ -880,9 +886,10 @@ async def edit_department_page(request: Request, dept_id: int, db: Session = Dep
     # READONLY CHECK
     readonly = not has_permission(current_user, dept.province)
     is_zetel = (dept.type == "provinciale_zetel")
+    regions = db.query(Region).all()
     return templates.TemplateResponse(request=request, name="edit_department.html",
                                       context={"user": current_user, "dept": dept, "readonly": readonly,
-                                               "is_zetel": is_zetel})
+                                               "is_zetel": is_zetel, "regions": regions})
 
 
 @app.post("/departments/delete/{dept_id}")
