@@ -70,6 +70,9 @@ class Department(Base):
     email = Column(String(100), nullable=True)
     telephone = Column(String(50), nullable=True)
     address = Column(String(255), nullable=True)
+    postal_address = Column(String(255), nullable=True)  # Nieuw veld
+    website_override = Column(String(255), nullable=True)  # Nieuw veld
+    comments = Column(String(1000), nullable=True)
     entiteitnummer = Column(String(20), nullable=True)
     color = Column(String(20), nullable=True)
     transparent = Column(Boolean, default=False)

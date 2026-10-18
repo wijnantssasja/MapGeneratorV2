@@ -343,6 +343,9 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
         entiteitnummer=form.get("entiteitnummer"), color=form.get("color"),
         type="provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling",
         transparent=True if form.get("transparent") else False,
+        postal_address=form.get("postal_address"),
+        website_override=form.get("website_override"),
+        comments=form.get("comments"),
     )
     db.add(new_dept)
     db.flush()
@@ -406,6 +409,9 @@ async def update_department(request: Request, dept_id: int, db: Session = Depend
     dept.lat = form_lat
     dept.lon = form_lon
     dept.address = new_address
+    dept.postal_address = form.get("postal_address")
+    dept.website_override = form.get("website_override")
+    dept.comments = form.get("comments")
 
     if str(dept.name) != str(form.get("name")): changes.append("naam")
     if str(dept.province) != str(form.get("province")): changes.append("provincie")
@@ -547,9 +553,8 @@ async def merge_select_page(request: Request, db: Session = Depends(get_db)):
             Department.name).all()
     is_zetel = (Department.type == "provinciale_zetel")
     regions = db.query(Region).all()
-    return templates.TemplateResponse(request=request, name="edit_department.html",
-                                      context={"user": current_user, "dept": dept, "readonly": readonly,
-                                               "is_zetel": is_zetel, "regions": regions})
+    return templates.TemplateResponse(request=request, name="merge_departments.html",
+                                      context={"user": current_user, "is_zetel": is_zetel, "regions": regions})
 
 
 @app.post("/departments/merge", response_class=HTMLResponse)

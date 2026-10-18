@@ -243,11 +243,10 @@ def background_generate_map(province_filter: str, username: str):
         # 1. Haal data op uit Database
         if prov_name == "Vlaanderen":
             depts = db.query(Department).all()
+            sits = db.query(SitLocation).all()
         else:
             depts = db.query(Department).filter(Department.province == prov_name).all()
-
-        # SIT locaties halen we ALTIJD allemaal op
-        sits = db.query(SitLocation).all()
+            sits = db.query(SitLocation).filter(SitLocation.province == prov_name).all()
 
         if not depts:
             print("[WARN] Geen afdelingen gevonden voor deze provincie.")
@@ -286,12 +285,13 @@ def background_generate_map(province_filter: str, username: str):
                 "color": d.color or "#d32f2f",
                 "type": d.type,
                 "address": d.address or "Geen adres",
+                "postal_address": d.postal_address,
                 "email": d.email or "",
                 "lat": d.lat,
                 "lon": d.lon,
                 "is_transparent": d.transparent,
                 "services": srvs,
-                "website_url": f"https://www.rodekruis.be/afdeling/{d.name.lower().replace(' ', '-')}"
+                "website_url": d.website_override if d.website_override else f"https://www.rodekruis.be/afdeling/{d.name.lower().replace(' ', '-')}"
             })
 
         df_depts = pd.DataFrame(dept_data)
@@ -450,6 +450,10 @@ def background_generate_map(province_filter: str, username: str):
 
                 is_transparent = row['is_transparent'] or row["is_contained"]
 
+                adres_sectie = f"<b>Adres:</b> {row['address']}"
+                if row.get('postal_address'):
+                    adres_sectie += f"<br><b>Postadres:</b> {row['postal_address']}"
+
                 html_content = f"""
                 <div class="rk-popup-container">
                     <h4 class="rk-popup-title">{title_text}</h4>
@@ -458,7 +462,8 @@ def background_generate_map(province_filter: str, username: str):
                         <b>Gemeente:</b> {row['mun_label']}<br><b>Deelgemeente:</b> {row['deelgemeente']}
                     </div>
                     <div class="rk-popup-body">
-                        <b>Adres:</b> {row['address']}<br><b>Email:</b> <a href="mailto:{row['email']}" class="rk-popup-link">{row['email']}</a><br>
+                        {adres_sectie}
+                        <br><b>Email:</b> <a href="mailto:{row['email']}" class="rk-popup-link">{row['email']}</a><br>
                         {website_line}
                     </div>
                     {volunteer_section}
@@ -585,12 +590,14 @@ def background_generate_map(province_filter: str, username: str):
 
             # Text Labels Gemeente, Afdeling, Cluster
             for name, row in gdf_selected.to_crs(epsg=31370).dissolve(by='mun_label').to_crs(epsg=4326).iterrows():
-                folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
+                pt = row.geometry.representative_point()
+                folium.Marker([pt.y, pt.x], icon=folium.DivIcon(
                     html=f'<div style="{base_style} font-size: 11px; font-weight: bold; color: #333; text-shadow: 2px 2px 3px #fff;">{name}</div>')).add_to(
                     fg_label_gem)
 
             for name, row in cluster_dissolved.iterrows():
-                folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
+                pt = row.geometry.representative_point()
+                folium.Marker([pt.y, pt.x], icon=folium.DivIcon(
                     html=f'<div style="{base_style} font-size: 12px; font-weight: bold; color: #d32f2f; text-shadow: 2px 2px 3px #fff;">{name}</div>')).add_to(
                     fg_label_afd)
 
@@ -600,7 +607,8 @@ def background_generate_map(province_filter: str, username: str):
                 if not wc_valid.empty:
                     wc_labels = wc_valid.to_crs(epsg=31370).dissolve(by='working_cluster_name').to_crs(epsg=4326)
                     for name, row in wc_labels.iterrows():
-                        folium.Marker([row.geometry.centroid.y, row.geometry.centroid.x], icon=folium.DivIcon(
+                        pt = row.geometry.representative_point()
+                        folium.Marker([pt.y, pt.x], icon=folium.DivIcon(
                             html=f'<div style="{base_style} font-size: 14px; font-weight: bold; color: #0066FF; text-shadow: 2px 2px 4px #fff;">{name}</div>')).add_to(
                             fg_label_sam)
         # 6. Locaties, Voertuigen & Patronen (Markers)
@@ -635,7 +643,11 @@ def background_generate_map(province_filter: str, username: str):
                             marker_icons_html += f"<span title='{service.capitalize()}' style='background:#eee; padding:2px 5px; border-radius:3px; margin-right:5px; font-size:11px; cursor: help;'>{service.capitalize()}</span>"
                     marker_icons_html += "</div>"
 
-                marker_website = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"
+                if dept.website_override:
+                    marker_website = dept.website_override
+                else:
+                    marker_website = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"
+
                 marker_volunteer = marker_website + "/wat-kan-jij-doen/word-vrijwilliger/"
 
                 marker_web_line = "" if is_zetel else f"<b>Website:</b> <a href='{marker_website}' target='_blank' class='rk-popup-link'>{marker_website}</a><br>"
@@ -644,12 +656,16 @@ def background_generate_map(province_filter: str, username: str):
                 dept_email = dept.email or ""
                 dept_address = dept.address or "Geen adres"
 
+                adres_sectie = f"<b>Adres:</b> {dept_address}"
+                if dept.postal_address:
+                    adres_sectie += f"<br><b>Postadres:</b> {dept.postal_address}"
+
                 loc_html = f"""
                 <div class="rk-popup-container">
                     <h4 class="rk-popup-title">{title_text}</h4>
                     {marker_icons_html}
                     <div class="rk-popup-body">
-                        <b>Adres:</b> {dept_address}<br><b>Email:</b> <a href="mailto:{dept_email}" class="rk-popup-link">{dept_email}</a><br>
+                        {adres_sectie}<br><b>Email:</b> <a href="mailto:{dept_email}" class="rk-popup-link">{dept_email}</a><br>
                         {marker_web_line}
                     </div>
                     {marker_vol_btn}
