@@ -236,7 +236,7 @@ async def manage_regions(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-    regions = db.query(Region).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
     return templates.TemplateResponse(request=request, name="regions.html",
                                       context={"user": current_user, "regions": regions, "departments": departments,
@@ -248,8 +248,8 @@ async def manage_clusters(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-    clusters = db.query(Cluster).all()
-    regions = db.query(Region).all()
+    clusters = db.query(Cluster).order_by(Cluster.province, Cluster.name).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
     return templates.TemplateResponse(request=request, name="clusters.html",
                                       context={"user": current_user, "clusters": clusters, "regions": regions,
@@ -264,7 +264,7 @@ async def new_department_page(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     is_zetel = request.query_params.get("type") == "zetel"
-    regions = db.query(Region).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     return templates.TemplateResponse(request=request, name="edit_department.html",
                                       context={"user": current_user, "dept": dept, "readonly": readonly,
                                                "is_zetel": is_zetel, "regions": regions})
@@ -552,10 +552,9 @@ async def merge_select_page(request: Request, db: Session = Depends(get_db)):
                                                   Department.type != "provinciale_zetel").order_by(
             Department.name).all()
     is_zetel = (Department.type == "provinciale_zetel")
-    regions = db.query(Region).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     return templates.TemplateResponse(request=request, name="merge_departments.html",
-                                      context={"user": current_user, "is_zetel": is_zetel, "regions": regions})
-
+                                      context={"user": current_user, "is_zetel": is_zetel, "regions": regions, "departments": departments})
 
 @app.post("/departments/merge", response_class=HTMLResponse)
 async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...),
@@ -607,9 +606,14 @@ async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id:
         vehicles=merged_vehicles,
         services=[SimpleNamespace(name=s_name) for s_name in service_names]
     )
+    is_zetel = False
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
+    readonly = not has_permission(current_user, dept_a.province)
 
     return templates.TemplateResponse(request=request, name="edit_department.html",
-                                      context={"user": current_user, "dept": merged_dept})
+                                      context={"user": current_user, "dept": merged_dept, "readonly": readonly,
+                                               "is_zetel": is_zetel, "regions": regions})
+
 
 
 # --- REGIO'S BEWERKEN & VERWIJDEREN ---
@@ -621,7 +625,7 @@ async def edit_region_page(request: Request, reg_id: int, db: Session = Depends(
     region = db.query(Region).filter(Region.id == reg_id).first()
     if not region: raise HTTPException(status_code=404, detail="Regio niet gevonden")
 
-    regions = db.query(Region).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
     return templates.TemplateResponse(request=request, name="regions.html",
                                       context={"user": current_user, "regions": regions, "departments": departments,
@@ -637,8 +641,8 @@ async def edit_cluster_page(request: Request, clus_id: int, db: Session = Depend
     cluster = db.query(Cluster).filter(Cluster.id == clus_id).first()
     if not cluster: raise HTTPException(status_code=404, detail="Cluster niet gevonden")
 
-    clusters = db.query(Cluster).all()
-    regions = db.query(Region).all()
+    clusters = db.query(Cluster).order_by(Cluster.province, Cluster.name).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
     return templates.TemplateResponse(request=request, name="clusters.html",
                                       context={"user": current_user, "clusters": clusters, "regions": regions,
@@ -891,7 +895,7 @@ async def edit_department_page(request: Request, dept_id: int, db: Session = Dep
     # READONLY CHECK
     readonly = not has_permission(current_user, dept.province)
     is_zetel = (dept.type == "provinciale_zetel")
-    regions = db.query(Region).all()
+    regions = db.query(Region).order_by(Region.province, Region.name).all()
     return templates.TemplateResponse(request=request, name="edit_department.html",
                                       context={"user": current_user, "dept": dept, "readonly": readonly,
                                                "is_zetel": is_zetel, "regions": regions})

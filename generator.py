@@ -286,7 +286,8 @@ def background_generate_map(province_filter: str, username: str):
                 "type": d.type,
                 "address": d.address or "Geen adres",
                 "postal_address": d.postal_address,
-                "email": d.email or "",
+                "email": d.email if d.email else f"info@{d.name.lower().replace(' ', '-')}.rodekruis.be",
+                "comments": d.comments,
                 "lat": d.lat,
                 "lon": d.lon,
                 "is_transparent": d.transparent,
@@ -450,9 +451,15 @@ def background_generate_map(province_filter: str, username: str):
 
                 is_transparent = row['is_transparent'] or row["is_contained"]
 
-                adres_sectie = f"<b>Adres:</b> {row['address']}"
+                adres_sectie = ""
+                if row.get('address') and row['address'] != "Geen adres":
+                    adres_sectie += f"<b>Adres:</b> {row['address']}<br>"
                 if row.get('postal_address'):
-                    adres_sectie += f"<br><b>Postadres:</b> {row['postal_address']}"
+                    adres_sectie += f"<b>Postadres:</b> {row['postal_address']}<br>"
+
+                comments_icon = ""
+                if not is_public and row.get('comments'):
+                    comments_icon = f"<i class='fa fa-info-circle' style='color: #1976d2; position: absolute; bottom: 10px; left: 10px; font-size: 18px; cursor: help;' title=\"{row['comments']}\"></i>"
 
                 html_content = f"""
                 <div class="rk-popup-container">
@@ -467,6 +474,7 @@ def background_generate_map(province_filter: str, username: str):
                         {website_line}
                     </div>
                     {volunteer_section}
+                    {comments_icon}
                 </div>
                 """
 
@@ -531,7 +539,7 @@ def background_generate_map(province_filter: str, username: str):
                     prov_dissolved = prov_valid.dissolve(by='province')
                     folium.GeoJson(
                         prov_dissolved,
-                        style_function=lambda x: {'fillColor': 'none', 'color': '#2F4F4F', 'weight': 5.5,
+                        style_function=lambda x: {'fillColor': 'none', 'color': '#d32f2f', 'weight': 7.0,
                                                   'opacity': 0.9, 'className': 'layer-province'},
                         interactive=False
                     ).add_to(fg_provincies)
@@ -653,12 +661,18 @@ def background_generate_map(province_filter: str, username: str):
                 marker_web_line = "" if is_zetel else f"<b>Website:</b> <a href='{marker_website}' target='_blank' class='rk-popup-link'>{marker_website}</a><br>"
                 marker_vol_btn = "" if is_zetel else f'<div class="rk-popup-btn-container"><a href="{marker_volunteer}" target="_blank" class="rk-popup-btn">Word vrijwilliger</a></div>'
 
-                dept_email = dept.email or ""
+                dept_email = dept.email if dept.email else f"info@{dept.name.lower().replace(' ', '-')}.rodekruis.be"
                 dept_address = dept.address or "Geen adres"
 
-                adres_sectie = f"<b>Adres:</b> {dept_address}"
+                adres_sectie = ""
+                if dept.address and dept.address != "Geen adres":
+                    adres_sectie += f"<b>Adres:</b> {dept.address}<br>"
                 if dept.postal_address:
-                    adres_sectie += f"<br><b>Postadres:</b> {dept.postal_address}"
+                    adres_sectie += f"<b>Postadres:</b> {dept.postal_address}<br>"
+
+                marker_comments_icon = ""
+                if not is_public and dept.comments:
+                    marker_comments_icon = f"<i class='fa fa-info-circle' style='color: #1976d2; position: absolute; bottom: 10px; left: 10px; font-size: 18px; cursor: help;' title=\"{dept.comments}\"></i>"
 
                 loc_html = f"""
                 <div class="rk-popup-container">
@@ -669,6 +683,7 @@ def background_generate_map(province_filter: str, username: str):
                         {marker_web_line}
                     </div>
                     {marker_vol_btn}
+                    {marker_comments_icon}
                 </div>
                 """
                 # ---------------------------------------------------------------

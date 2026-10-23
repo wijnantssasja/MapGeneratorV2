@@ -20,9 +20,9 @@
 <table>
     <thead>
     <tr>
-        <th>Naam</th>
-        <th>Provincie</th>
-        <th>Regio (Group)</th>
+        <th onclick="sortTable(0)" style="cursor: pointer;" title="Sorteer op Naam">Naam</th>
+        <th onclick="sortTable(1)" style="cursor: pointer;" title="Sorteer op Provincie">Provincie</th>
+        <th onclick="sortTable(2)" style="cursor: pointer;" title="Sorteer op Regio">Regio (Group)</th>
         <th>Adres</th>
         <th>Kleur</th>
         <th>Acties</th>
@@ -73,6 +73,43 @@
                 }
             }
             tr[i].style.display = match ? "" : "none";
+        }
+    }
+    function sortTable(n) {
+        let table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.querySelector("table");
+        switching = true;
+        dir = "asc";
+
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                if (dir == "asc") {
+                    if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount ++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
         }
     }
 </script>
