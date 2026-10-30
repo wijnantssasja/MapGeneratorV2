@@ -255,11 +255,38 @@ def background_generate_map(province_filter: str, username: str):
         dept_ids = [str(d.id) for d in depts]
 
         # 2. Haal GeoJSON shapes op (Nu met 'hoofdgem' exact gemapt op je database schema)
+        #sql = f"""
+        #    SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente,postcode, department_id, geom
+        #    FROM department_shapes
+        #    WHERE department_id IN ({','.join(dept_ids)})
+        #"""
+
+        safe_pc = "CAST(NULLIF(regexp_replace(postcode, '\\D', '', 'g'), '') AS INTEGER)"
+        if prov_name.lower() == "antwerpen":
+            postcode_filter = f"{safe_pc} BETWEEN 2000 AND 2999"
+        elif prov_name.lower() == "limburg":
+            postcode_filter = f"{safe_pc} BETWEEN 3500 AND 3999"
+        elif prov_name.lower() == "oost-vlaanderen":
+            postcode_filter = f"{safe_pc} BETWEEN 9000 AND 9999"
+        elif prov_name.lower() == "west-vlaanderen":
+            postcode_filter = f"{safe_pc} BETWEEN 8000 AND 8999"
+        elif prov_name.lower() == "vlaams-brabant":
+            postcode_filter = f"({safe_pc} BETWEEN 1500 AND 1999 OR {safe_pc} BETWEEN 3000 AND 3499)"
+        #elif prov_name.lower() == "brussel":
+            #postcode_filter = f"{safe_pc} BETWEEN 1000 AND 1299"
+        elif prov_name.lower() == "vlaanderen":
+        # Combineert heel Vlaanderen en sluit Brussel (1000-1299) en Wallonië (4000-7999) uit
+            postcode_filter = f"({safe_pc} BETWEEN 1500 AND 3999 OR {safe_pc} BETWEEN 8000 AND 9999)"
+        else:
+            # Voorkom dat onbekende provincies de hele landkaart aan unassigned shapes inladen
+            postcode_filter = "1=0"
+
         sql = f"""
-            SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente,postcode, department_id, geom 
-            FROM department_shapes 
-            WHERE department_id IN ({','.join(dept_ids)})
-        """
+                    SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente, postcode, department_id, geom 
+                    FROM department_shapes 
+                    WHERE department_id IN ({','.join(dept_ids)})
+                       OR (department_id IS NULL AND {postcode_filter})
+                """
         gdf_shapes = gpd.read_postgis(sql, engine.connect(), geom_col='geom')
         gdf_shapes = gdf_shapes.rename(columns={'geom': 'geometry'}).set_geometry('geometry')
         gdf_shapes.crs = "EPSG:4326"
@@ -298,11 +325,16 @@ def background_generate_map(province_filter: str, username: str):
         df_depts = pd.DataFrame(dept_data)
 
         if not gdf_shapes.empty:
-            gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="inner")
+            #gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="inner")
+            gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="left")
 
             # Vang lege hoofdgemeentes op door de deelgemeente in te vullen
             gdf_selected['hoofdgemeente'] = gdf_selected['hoofdgemeente'].fillna(gdf_selected['deelgemeente'])
             gdf_selected['mun_label'] = gdf_selected['hoofdgemeente']
+
+            # Vul de ontbrekende provincies correct aan
+            ontbrekende_provincies = gdf_selected['postcode'].apply(get_prov)
+            gdf_selected['province'] = gdf_selected['province'].fillna(ontbrekende_provincies)
 
             print("[GENERATOR] Topologie vereenvoudigen en afronden...")
             # 1. Topologische Simplificatie
@@ -431,6 +463,22 @@ def background_generate_map(province_filter: str, username: str):
         # 5. Voeg de Polygonen (Afdelingen) Toe
         if not gdf_selected.empty:
             for idx, row in gdf_selected.iterrows():
+                # Check for unassigned gaps
+                if pd.isna(row['department_id']):
+                    folium.GeoJson(
+                        row.geometry,
+                        style_function=lambda x: {
+                            'fillColor': 'none',
+                            'color': '#444444',
+                            'weight': 1.2,
+                            'dashArray': '5, 5',
+                            'fillOpacity': 0,
+                            'className': 'layer-afdelingen'
+                        },
+                        tooltip=f"Niet toegewezen: {row['deelgemeente']}"
+                    ).add_to(fg_afdelingen)
+                    continue
+
                 is_zetel = (row["type"] == "provinciale_zetel")
                 title_text = f"Provinciale Zetel {row['cluster_name']}" if is_zetel else f"Rode Kruis-{row['cluster_name']}"
 
@@ -502,7 +550,9 @@ def background_generate_map(province_filter: str, username: str):
                            interactive=False).add_to(fg_afdelingen)
 
             # Buitenranden fix: Afdelingen (cluster_dissolved) een extra stevige buitenrand geven
-            cluster_dissolved = gdf_selected.dissolve(by='cluster_name')
+            #cluster_dissolved = gdf_selected.dissolve(by='cluster_name')
+            assigned_only = gdf_selected[gdf_selected['department_id'].notna()]
+            cluster_dissolved = assigned_only.dissolve(by='cluster_name')
             folium.GeoJson(cluster_dissolved,
                            style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 2.8,
                                                      'fillOpacity': 0, 'className': 'layer-afdelingen'},
@@ -1089,3 +1139,16 @@ def background_generate_map(province_filter: str, username: str):
         import traceback
         traceback.print_exc()
         db.close()
+
+
+def get_prov(pc_str):
+    try:
+        pc = int("".join(filter(str.isdigit, str(pc_str))))
+        if 1500 <= pc <= 1999 or 3000 <= pc <= 3499: return "Vlaams-Brabant"
+        if 2000 <= pc <= 2999: return "Antwerpen"
+        if 3500 <= pc <= 3999: return "Limburg"
+        if 8000 <= pc <= 8999: return "West-Vlaanderen"
+        if 9000 <= pc <= 9999: return "Oost-Vlaanderen"
+    except:
+        pass
+    return "Onbekend"
