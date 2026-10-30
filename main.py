@@ -206,7 +206,7 @@ async def list_departments(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     # Iedereen ziet alle afdelingen (behalve zetels)
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").order_by(Department.name).all()
+    departments = db.query(Department).filter(Department.type.notin_(["provinciale_zetel", "112_standplaats"])).order_by(Department.name).all()
     return templates.TemplateResponse(request=request, name="departments.html",
                                       context={"user": current_user, "departments": departments})
 
@@ -237,7 +237,7 @@ async def manage_regions(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     regions = db.query(Region).order_by(Region.province, Region.name).all()
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
+    departments = db.query(Department).filter(Department.type.notin_(["provinciale_zetel", "112_standplaats"])).all()
     return templates.TemplateResponse(request=request, name="regions.html",
                                       context={"user": current_user, "regions": regions, "departments": departments,
                                                "edit_region": None})
@@ -250,7 +250,7 @@ async def manage_clusters(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     clusters = db.query(Cluster).order_by(Cluster.province, Cluster.name).all()
     regions = db.query(Region).order_by(Region.province, Region.name).all()
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
+    departments = db.query(Department).filter(Department.type.notin_(["provinciale_zetel", "112_standplaats"])).all()
     return templates.TemplateResponse(request=request, name="clusters.html",
                                       context={"user": current_user, "clusters": clusters, "regions": regions,
                                                "departments": departments, "edit_cluster": None})
@@ -332,16 +332,24 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+
     form = await request.form()
     province = form.get("province")
     verify_edit_permission(current_user, province)
+
+    if form.get("is_provinciale_zetel"):
+        form_type = "provinciale_zetel"
+    elif form.get("is_112_standplaats"):
+        form_type = "112_standplaats"
+    else:
+        form_type = "afdeling"
 
     new_dept = Department(
         name=form.get("name"), province=province, group=form.get("group"),
         address=form.get("address"), email=form.get("email"), telephone=form.get("telephone"),
         region_id=int(form.get("region_id")) if form.get("region_id") else None,
         entiteitnummer=form.get("entiteitnummer"), color=form.get("color"),
-        type="provinciale_zetel" if form.get("is_provinciale_zetel") else "afdeling",
+        type=form_type,
         transparent=True if form.get("transparent") else False,
         postal_address=form.get("postal_address"),
         website_override=form.get("website_override"),
@@ -378,7 +386,8 @@ async def create_department(request: Request, db: Session = Depends(get_db)):
 
     log_action(db, current_user.username, "CREATE", "Afdeling", new_dept.name, "Nieuwe afdeling/fusie aangemaakt.")
     db.commit()
-    target_url = "/provinciale-zetels" if new_dept.type == "provinciale_zetel" else "/departments"
+    target_url = "/provinciale-zetels" if new_dept.type == "provinciale_zetel" else (
+        "/112-standplaatsen" if new_dept.type == "112_standplaats" else "/departments")
     return RedirectResponse(url=target_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -458,7 +467,8 @@ async def update_department(request: Request, dept_id: int, db: Session = Depend
     log_action(db, current_user.username, "UPDATE", "Afdeling", dept.name,
                f"Gewijzigd: {', '.join(changes) if changes else 'Subdata'}")
     db.commit()
-    target_url = "/provinciale-zetels" if dept.type == "provinciale_zetel" else "/departments"
+    target_url = "/provinciale-zetels" if dept.type == "provinciale_zetel" else (
+        "/112-standplaatsen" if dept.type == "112_standplaats" else "/departments")
     return RedirectResponse(url=target_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -545,16 +555,18 @@ async def merge_select_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     if current_user.role in ["admin", "nationaal"]:
-        departments = db.query(Department).filter(Department.type != "provinciale_zetel").order_by(
+        departments = db.query(Department).filter(Department.type.notin_(["provinciale_zetel", "112_standplaats"])).order_by(
             Department.name).all()
     else:
         departments = db.query(Department).filter(Department.province == current_user.province_access,
-                                                  Department.type != "provinciale_zetel").order_by(
+                                                  Department.type.notin_(["provinciale_zetel", "112_standplaats"])).order_by(
             Department.name).all()
     is_zetel = (Department.type == "provinciale_zetel")
     regions = db.query(Region).order_by(Region.province, Region.name).all()
     return templates.TemplateResponse(request=request, name="merge_departments.html",
-                                      context={"user": current_user, "is_zetel": is_zetel, "regions": regions, "departments": departments})
+                                      context={"user": current_user, "is_zetel": is_zetel, "regions": regions,
+                                               "departments": departments})
+
 
 @app.post("/departments/merge", response_class=HTMLResponse)
 async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id: int = Form(...),
@@ -615,7 +627,6 @@ async def execute_merge(request: Request, dept_a_id: int = Form(...), dept_b_id:
                                                "is_zetel": is_zetel, "regions": regions})
 
 
-
 # --- REGIO'S BEWERKEN & VERWIJDEREN ---
 @app.get("/regions/edit/{reg_id}", response_class=HTMLResponse)
 async def edit_region_page(request: Request, reg_id: int, db: Session = Depends(get_db)):
@@ -626,7 +637,7 @@ async def edit_region_page(request: Request, reg_id: int, db: Session = Depends(
     if not region: raise HTTPException(status_code=404, detail="Regio niet gevonden")
 
     regions = db.query(Region).order_by(Region.province, Region.name).all()
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
+    departments = db.query(Department).filter(Department.type.notin_(["provinciale_zetel", "112_standplaats"])).all()
     return templates.TemplateResponse(request=request, name="regions.html",
                                       context={"user": current_user, "regions": regions, "departments": departments,
                                                "edit_region": region})
@@ -643,7 +654,7 @@ async def edit_cluster_page(request: Request, clus_id: int, db: Session = Depend
 
     clusters = db.query(Cluster).order_by(Cluster.province, Cluster.name).all()
     regions = db.query(Region).order_by(Region.province, Region.name).all()
-    departments = db.query(Department).filter(Department.type != "provinciale_zetel").all()
+    departments = db.query(Department).filter(Department.type.notin_(["provinciale_zetel", "112_standplaats"])).all()
     return templates.TemplateResponse(request=request, name="clusters.html",
                                       context={"user": current_user, "clusters": clusters, "regions": regions,
                                                "departments": departments, "edit_cluster": cluster})
@@ -907,17 +918,19 @@ async def delete_department(dept_id: int, request: Request, db: Session = Depend
     if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     dept = db.query(Department).filter(Department.id == dept_id).first()
     is_zetel = False
+    is_112 = False
     if dept:
         if not has_permission(current_user, dept.province or ""):
             return HTMLResponse(
                 "<h2>Actie geweigerd</h2><p>Je hebt geen rechten om deze afdeling te wissen.</p><a href='/departments'>Ga terug</a>",
                 status_code=403)
         is_zetel = (dept.type == "provinciale_zetel")
+        is_112 = (dept.type == "112_standplaats")
         log_action(db, current_user.username, "DELETE", "Afdeling", dept.name, "Afdeling verwijderd")
         dept.services.clear()
         db.delete(dept)
         db.commit()
-    target_url = "/provinciale-zetels" if is_zetel else "/departments"
+    target_url = "/provinciale-zetels" if is_zetel else ("/112-standplaatsen" if is_112 else "/departments")
     return RedirectResponse(url=target_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -1660,3 +1673,37 @@ async def get_vk_map_data(db: Session = Depends(get_db)):
             }
         })
     return {"type": "FeatureCollection", "features": features}
+
+
+@app.get("/112-standplaatsen", response_class=HTMLResponse)
+async def list_112_standplaatsen(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    standplaatsen = db.query(Department).filter(Department.type == "112_standplaats").order_by(Department.name).all()
+    return templates.TemplateResponse(request=request, name="112_standplaatsen.html",
+                                      context={"user": current_user, "standplaatsen": standplaatsen})
+
+
+@app.get("/112-standplaatsen/new", response_class=HTMLResponse)
+async def new_112_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request=request, name="edit_112.html",
+                                      context={"user": current_user, "dept": None, "readonly": False, "is_112": True})
+
+
+@app.get("/112-standplaatsen/edit/{dept_id}", response_class=HTMLResponse)
+async def edit_112_page(request: Request, dept_id: int, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user: return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    dept = db.query(Department).filter(Department.id == dept_id).first()
+    if not dept or dept.type != "112_standplaats":
+        raise HTTPException(status_code=404, detail="112-Standplaats niet gevonden")
+
+    readonly = not has_permission(current_user, dept.province)
+    return templates.TemplateResponse(request=request, name="edit_112.html",
+                                      context={"user": current_user, "dept": dept, "readonly": readonly,
+                                               "is_112": True})

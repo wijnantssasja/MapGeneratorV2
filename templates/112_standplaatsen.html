@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}112 Standplaatsen - Rode Kruis Map Generator{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h2>112 Standplaatsen Overzicht</h2>
+    <a href="/112-standplaatsen/new"
+       style="background-color: #0066cc; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">+
+        Nieuwe 112 Standplaats</a>
+</div>
+
+<div style="margin-bottom: 15px;">
+    <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Zoek op naam, adres of provincie..."
+           style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>Naam</th>
+        <th>Provincie</th>
+        <th>Adres</th>
+        <th>Voertuigen</th>
+        <th>Acties</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for standplaats in standplaatsen %}
+    <tr>
+        <td><strong><i class="fa-solid fa-star-of-life" style="color: #0066cc; margin-right: 5px;"></i> {{ standplaats.name }}</strong></td>
+        <td>{{ standplaats.province }}</td>
+        <td>{{ standplaats.address or '-' }}</td>
+        <td>{{ standplaats.vehicles|length }}</td>
+        <td>
+            <a href="/112-standplaatsen/edit/{{ standplaats.id }}" class="btn-edit" {% if user.role not in ['admin', 'nationaal'] and
+            standplaats.province != user.province_access %}style="background-color: #6c757d;"{% endif %}>
+            {% if user.role in ['admin', 'nationaal'] or standplaats.province == user.province_access %}Bewerk{% else %}Bekijk{% endif %}
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    function filterTable() {
+        let input = document.getElementById("tableSearch");
+        let filter = input.value.toLowerCase();
+        let table = document.querySelector("table");
+        let tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            let td = tr[i].getElementsByTagName("td");
+            let match = false;
+            for (let j = 0; j < td.length; j++) {
+                if (td[j]) {
+                    if (td[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
+                        match = true;
+                        break;
+                    }
+                }
+            }
+            tr[i].style.display = match ? "" : "none";
+        }
+    }
+</script>
+{% endblock %}

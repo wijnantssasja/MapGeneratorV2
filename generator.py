@@ -255,11 +255,11 @@ def background_generate_map(province_filter: str, username: str):
         dept_ids = [str(d.id) for d in depts]
 
         # 2. Haal GeoJSON shapes op (Nu met 'hoofdgem' exact gemapt op je database schema)
-        #sql = f"""
+        # sql = f"""
         #    SELECT id, shape_id, name as deelgemeente, hoofdgem as hoofdgemeente,postcode, department_id, geom
         #    FROM department_shapes
         #    WHERE department_id IN ({','.join(dept_ids)})
-        #"""
+        # """
 
         safe_pc = "CAST(NULLIF(regexp_replace(postcode, '\\D', '', 'g'), '') AS INTEGER)"
         if prov_name.lower() == "antwerpen":
@@ -272,10 +272,10 @@ def background_generate_map(province_filter: str, username: str):
             postcode_filter = f"{safe_pc} BETWEEN 8000 AND 8999"
         elif prov_name.lower() == "vlaams-brabant":
             postcode_filter = f"({safe_pc} BETWEEN 1500 AND 1999 OR {safe_pc} BETWEEN 3000 AND 3499)"
-        #elif prov_name.lower() == "brussel":
-            #postcode_filter = f"{safe_pc} BETWEEN 1000 AND 1299"
+        # elif prov_name.lower() == "brussel":
+        # postcode_filter = f"{safe_pc} BETWEEN 1000 AND 1299"
         elif prov_name.lower() == "vlaanderen":
-        # Combineert heel Vlaanderen en sluit Brussel (1000-1299) en Wallonië (4000-7999) uit
+            # Combineert heel Vlaanderen en sluit Brussel (1000-1299) en Wallonië (4000-7999) uit
             postcode_filter = f"({safe_pc} BETWEEN 1500 AND 3999 OR {safe_pc} BETWEEN 8000 AND 9999)"
         else:
             # Voorkom dat onbekende provincies de hele landkaart aan unassigned shapes inladen
@@ -325,7 +325,7 @@ def background_generate_map(province_filter: str, username: str):
         df_depts = pd.DataFrame(dept_data)
 
         if not gdf_shapes.empty:
-            #gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="inner")
+            # gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="inner")
             gdf_selected = gdf_shapes.merge(df_depts, on="department_id", how="left")
 
             # Vang lege hoofdgemeentes op door de deelgemeente in te vullen
@@ -434,12 +434,14 @@ def background_generate_map(province_filter: str, username: str):
         fg_locaties = folium.FeatureGroup(name="Afdelingslocaties", overlay=True, control=True, show=True)
         fg_vrijwilligerskorps = folium.FeatureGroup(name="Vrijwilligerskorpsen", overlay=True, control=True, show=False)
         fg_ziekenwagens = folium.FeatureGroup(name="Ziekenwagen", overlay=True, control=True, show=False)
+        fg_112 = folium.FeatureGroup(name="112 Standplaats", overlay=True, control=True, show=False)
         fg_sit = folium.FeatureGroup(name="SIT", overlay=True, control=True, show=False)
 
         fg_geen_labels = folium.FeatureGroup(name="Geen labels", overlay=True, control=True, show=True)
         fg_label_gem = folium.FeatureGroup(name="Gemeente Labels", overlay=True, control=True, show=False)
         fg_label_afd = folium.FeatureGroup(name="Afdeling Labels", overlay=True, control=True, show=False)
         fg_label_sam = folium.FeatureGroup(name="Cluster Labels", overlay=True, control=True, show=False)
+        fg_label_regio = folium.FeatureGroup(name="Regio Labels", overlay=True, control=True, show=False)  # <-- NIEUW
 
         # Patterns (Disciplines)
         pat_jeugd = StripePattern(angle=45, color='#FFA500', weight=4, opacity=0.8, space_color='white',
@@ -550,7 +552,7 @@ def background_generate_map(province_filter: str, username: str):
                            interactive=False).add_to(fg_afdelingen)
 
             # Buitenranden fix: Afdelingen (cluster_dissolved) een extra stevige buitenrand geven
-            #cluster_dissolved = gdf_selected.dissolve(by='cluster_name')
+            # cluster_dissolved = gdf_selected.dissolve(by='cluster_name')
             assigned_only = gdf_selected[gdf_selected['department_id'].notna()]
             cluster_dissolved = assigned_only.dissolve(by='cluster_name')
             folium.GeoJson(cluster_dissolved,
@@ -644,7 +646,7 @@ def background_generate_map(province_filter: str, username: str):
                     [label_lat, label_lon],
                     icon=folium.DivIcon(
                         html=f'<div style="{base_style} font-size: 22px; font-weight: bold; color: #333; text-shadow: 2px 2px 4px #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;">{str(gname).upper()}</div>')
-                ).add_to(fg_regio)
+                ).add_to(fg_label_regio)
 
             # Text Labels Gemeente, Afdeling, Cluster
             for name, row in gdf_selected.to_crs(epsg=31370).dissolve(by='mun_label').to_crs(epsg=4326).iterrows():
@@ -672,7 +674,13 @@ def background_generate_map(province_filter: str, username: str):
         # 6. Locaties, Voertuigen & Patronen (Markers)
         for dept in depts:
             is_zetel = (dept.type == "provinciale_zetel")
-            title_text = f"Provinciale Zetel {dept.name}" if is_zetel else f"Rode Kruis-{dept.name}"
+            is_112 = (dept.type == "112_standplaats")
+            if is_zetel:
+                title_text = f"Provinciale Zetel {dept.name}"
+            elif is_112:
+                title_text = f"112 Standplaats {dept.name}"
+            else:
+                title_text = f"Rode Kruis-{dept.name}"
 
             final_lat, final_lon = dept.lat, dept.lon
 
@@ -687,64 +695,86 @@ def background_generate_map(province_filter: str, username: str):
                     final_lat, final_lon = centroid.y, centroid.x
 
             if final_lat and final_lon:
-                # --- Zelfde pop-up layout als polygons, zonder gemeente ---
-                marker_icons_html = ""
-                services = [s.name.lower() for s in dept.services]
+                if is_112:
+                    # --- 112 STANDPLAATS LOGICA ---
+                    contact_email = dept.email if dept.email else "Geen e-mailadres gekend"
+                    dept_address = dept.address or "Geen adres"
 
-                if not is_public and services:
-                    marker_icons_html = "<div style='margin-top: 10px; margin-bottom: 10px;'>"
-                    for service in services:
-                        safe_name = service.replace(" ", "_").replace("-", "_")
-                        if service in loaded_icons:
-                            marker_icons_html += f"<div class='rk-icon rk-icon-{safe_name}' title='{service.capitalize()}'></div>"
-                        else:
-                            marker_icons_html += f"<span title='{service.capitalize()}' style='background:#eee; padding:2px 5px; border-radius:3px; margin-right:5px; font-size:11px; cursor: help;'>{service.capitalize()}</span>"
-                    marker_icons_html += "</div>"
+                    # Haal de gekoppelde voertuigen van deze standplaats op
+                    vehicles_html = "".join([
+                        f"<li style='margin-bottom: 3px;'><b>{v.name}</b> <span style='color: #666; font-size: 11px;'>(Vlootnr: {v.fleet_nr or 'Onbekend'})</span></li>"
+                        for v in dept.vehicles])
 
-                if dept.website_override:
-                    marker_website = dept.website_override
+                    popup_html = f"<div style='font-family: sans-serif; min-width: 250px;'><h4 style='margin: 0 0 5px 0; color: #0066cc; border-bottom: 1px solid #0066cc;'>112 Standplaats {dept.name}</h4><div style='font-size: 13px;'><b>Locatie:</b> {dept_address}<br><b>Email:</b> <a href='mailto:{contact_email}'>{contact_email}</a><ul style='margin-top: 5px; padding-left: 20px;'>{vehicles_html}</ul></div></div>"
+
+                    html_icon = f"<div style='position: relative; width: 30px; height: 42px; text-align: center; margin-left: -15px; margin-top: -42px;'><i class='fa fa-map-marker' style='font-size: 42px; color: #0066cc ; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);'></i><i class='fa fa-star-of-life' style='font-size: 16px; color: white; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);'></i></div>"
+
+                    folium.Marker(
+                        location=[final_lat, final_lon],
+                        icon=folium.DivIcon(html=html_icon, class_name="empty"),
+                        tooltip=f"112 Standplaats: {dept.name}",
+                        popup=folium.Popup(popup_html, max_width=300)
+                    ).add_to(fg_112)
+
                 else:
-                    marker_website = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"
+                    # --- Zelfde pop-up layout als polygons, zonder gemeente ---
+                    marker_icons_html = ""
+                    services = [s.name.lower() for s in dept.services]
 
-                marker_volunteer = marker_website + "/wat-kan-jij-doen/word-vrijwilliger/"
+                    if not is_public and services:
+                        marker_icons_html = "<div style='margin-top: 10px; margin-bottom: 10px;'>"
+                        for service in services:
+                            safe_name = service.replace(" ", "_").replace("-", "_")
+                            if service in loaded_icons:
+                                marker_icons_html += f"<div class='rk-icon rk-icon-{safe_name}' title='{service.capitalize()}'></div>"
+                            else:
+                                marker_icons_html += f"<span title='{service.capitalize()}' style='background:#eee; padding:2px 5px; border-radius:3px; margin-right:5px; font-size:11px; cursor: help;'>{service.capitalize()}</span>"
+                        marker_icons_html += "</div>"
 
-                marker_web_line = "" if is_zetel else f"<b>Website:</b> <a href='{marker_website}' target='_blank' class='rk-popup-link'>{marker_website}</a><br>"
-                marker_vol_btn = "" if is_zetel else f'<div class="rk-popup-btn-container"><a href="{marker_volunteer}" target="_blank" class="rk-popup-btn">Word vrijwilliger</a></div>'
+                    if dept.website_override:
+                        marker_website = dept.website_override
+                    else:
+                        marker_website = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"
 
-                dept_email = dept.email if dept.email else f"info@{dept.name.lower().replace(' ', '-')}.rodekruis.be"
-                dept_address = dept.address or "Geen adres"
+                    marker_volunteer = marker_website + "/wat-kan-jij-doen/word-vrijwilliger/"
 
-                adres_sectie = ""
-                if dept.address and dept.address != "Geen adres":
-                    adres_sectie += f"<b>Adres:</b> {dept.address}<br>"
-                if dept.postal_address:
-                    adres_sectie += f"<b>Postadres:</b> {dept.postal_address}<br>"
+                    marker_web_line = "" if is_zetel else f"<b>Website:</b> <a href='{marker_website}' target='_blank' class='rk-popup-link'>{marker_website}</a><br>"
+                    marker_vol_btn = "" if is_zetel else f'<div class="rk-popup-btn-container"><a href="{marker_volunteer}" target="_blank" class="rk-popup-btn">Word vrijwilliger</a></div>'
 
-                marker_comments_icon = ""
-                if not is_public and dept.comments:
-                    marker_comments_icon = f"<i class='fa fa-info-circle' style='color: #1976d2; position: absolute; bottom: 10px; left: 10px; font-size: 18px; cursor: help;' title=\"{dept.comments}\"></i>"
+                    dept_email = dept.email if dept.email else f"info@{dept.name.lower().replace(' ', '-')}.rodekruis.be"
+                    dept_address = dept.address or "Geen adres"
 
-                loc_html = f"""
-                <div class="rk-popup-container">
-                    <h4 class="rk-popup-title">{title_text}</h4>
-                    {marker_icons_html}
-                    <div class="rk-popup-body">
-                        {adres_sectie}<br><b>Email:</b> <a href="mailto:{dept_email}" class="rk-popup-link">{dept_email}</a><br>
-                        {marker_web_line}
+                    adres_sectie = ""
+                    if dept.address and dept.address != "Geen adres":
+                        adres_sectie += f"<b>Adres:</b> {dept.address}<br>"
+                    if dept.postal_address:
+                        adres_sectie += f"<b>Postadres:</b> {dept.postal_address}<br>"
+
+                    marker_comments_icon = ""
+                    if not is_public and dept.comments:
+                        marker_comments_icon = f"<i class='fa fa-info-circle' style='color: #1976d2; position: absolute; bottom: 10px; left: 10px; font-size: 18px; cursor: help;' title=\"{dept.comments}\"></i>"
+
+                    loc_html = f"""
+                    <div class="rk-popup-container">
+                        <h4 class="rk-popup-title">{title_text}</h4>
+                        {marker_icons_html}
+                        <div class="rk-popup-body">
+                            {adres_sectie}<br><b>Email:</b> <a href="mailto:{dept_email}" class="rk-popup-link">{dept_email}</a><br>
+                            {marker_web_line}
+                        </div>
+                        {marker_vol_btn}
+                        {marker_comments_icon}
                     </div>
-                    {marker_vol_btn}
-                    {marker_comments_icon}
-                </div>
-                """
-                # ---------------------------------------------------------------
+                    """
+                    # ---------------------------------------------------------------
 
-                folium.Marker(
-                    location=[final_lat, final_lon],
-                    icon=folium.Icon(icon='star' if is_zetel else 'plus', prefix='fa',
-                                     color='blue' if is_zetel else 'red'),
-                    tooltip=title_text,
-                    popup=folium.Popup(loc_html, max_width=350)
-                ).add_to(fg_locaties)
+                    folium.Marker(
+                        location=[final_lat, final_lon],
+                        icon=folium.Icon(icon='star' if is_zetel else 'plus', prefix='fa',
+                                         color='blue' if is_zetel else 'red'),
+                        tooltip=title_text,
+                        popup=folium.Popup(loc_html, max_width=350)
+                    ).add_to(fg_locaties)
 
             # Ziekenwagens (Gegroepeerd per adres met badge)
             grouped_zws = {}
@@ -1014,12 +1044,13 @@ def background_generate_map(province_filter: str, username: str):
 
         # Lagen Toevoegen & Menu genereren (Dynamisch voor Publiek/Intern)
         layers_to_add = [fg_afdelingen, fg_basis, fg_geen_afd, fg_provincies, fg_locaties, fg_geen_labels, fg_label_gem,
-                         fg_label_afd]
+                         fg_label_afd, fg_label_regio]
 
         if not is_public:
             layers_to_add.extend([
                 fg_werkingsgebieden, fg_regio, fg_vrijwilligerskorps, fg_ziekenwagens, fg_sit,
-                fg_jeugd, fg_zorgbib, fg_brugfiguren, fg_internationaal, fg_uitleen, fg_label_sam
+                fg_jeugd, fg_zorgbib, fg_brugfiguren, fg_internationaal, fg_uitleen, fg_label_sam, fg_112,
+                fg_label_regio
             ])
 
         for fg in layers_to_add:
@@ -1032,13 +1063,13 @@ def background_generate_map(province_filter: str, username: str):
         groups_dict = {
             'Basiskaart': [tl_licht, tl_osm, tl_geen],
             'Afdelingen': [fg_afdelingen, fg_basis, fg_geen_afd],
-            'Tekst Labels': [fg_geen_labels, fg_label_gem, fg_label_afd]
+            'Tekst Labels': [fg_geen_labels, fg_label_gem, fg_label_afd, fg_label_regio]
         }
 
         if not is_public:
             groups_dict['Vrijwilligerskorpsen'] = [fg_vrijwilligerskorps]
             groups_dict['Overlay'] = [fg_locaties, fg_werkingsgebieden, fg_regio]
-            groups_dict['Disciplines'] = [fg_ziekenwagens, fg_sit, fg_jeugd, fg_zorgbib, fg_brugfiguren,
+            groups_dict['Disciplines'] = [fg_ziekenwagens, fg_112, fg_sit, fg_jeugd, fg_zorgbib, fg_brugfiguren,
                                           fg_internationaal, fg_uitleen]
             groups_dict['Tekst Labels'].append(fg_label_sam)
         else:
