@@ -11,6 +11,8 @@ Een gespecialiseerde webapplicatie ontworpen om de geografische indeling, afdeli
 4. [Interactieve Kaartgenerator: `generator.py`](#4-interactieve-kaartgenerator-generatorpy)
 5. [Overzicht van de HTML Templates](#5-overzicht-van-de-html-templates)
 6. [Speciale & Geavanceerde Features](#6-speciale--geavanceerde-features)
+7. [Afhandeling van Blanco / Ontbrekende Gegevens](#7-afhandeling-van-blanco--ontbrekende-gegevens)
+8. [Regels en Algoritmes rond Plaatsing van Tekstlabels](#8-regels-en-algoritmes-rond-plaatsing-van-tekstlabels)
 
 ---
 
@@ -56,6 +58,9 @@ flowchart TD
 ## 2. Data-Architectuur: `database.py`
 
 Het datamodel is ontworpen om zowel klassieke administratieve gegevens als GIS-polygonen en audit trails te ondersteunen:
+
+> [!NOTE]
+> Voor het volledige **Entity-Relationship Diagram (ERD)**, gedetailleerde datavelden, types en cascade-regels, zie [README_DATABASE.md](README_DATABASE.md).
 
 ### Overzicht van de Datamodellen
 
@@ -283,3 +288,134 @@ templates/
 
 8. **FIFO Schijfbeheer (2 GB Limiet)**:
    Gegenereerde interactieve kaarten kunnen tientallen megabytes groot zijn. Het FIFO-mechanisme voorkomt dat de server volluipt door automatisch de oudste kaarten te wissen wanneer de schijfruimte overschreden wordt.
+
+---
+
+## 7. Afhandeling van Blanco / Ontbrekende Gegevens
+
+In operationele omgevingen komt het voor dat niet alle contactgegevens of coördinaten van een afdeling, post of voertuig ingevuld zijn. Het systeem beschikt over strikte, geautomatiseerde procedures en fallbacks om te voorkomen dat de generator vastloopt of dat er corrupte weergaven ontstaan:
+
+### 1. Adres en Coördinaten (`address`, `lat`, `lon`)
+- **Afdelingen & Hoofdlocaties**:
+  - *Stap 1 (Handmatige coördinaten)*: Het systeem controleert eerst of `dept.lat` en `dept.lon` expliciet zijn ingevuld in de database.
+  - *Stap 2 (Geocoding via API & Cache)*: Zijn deze leeg, maar is er wel een adres opgegeven (`dept.address`)? Dan wordt het adres gezocht in de lokale `coordinate_cache`. Indien niet gevonden, roept het systeem de Nominatim API aan (met `", België"` toevoeging en rate-limiting) en slaat de gevonden coördinaten direct op in de cache.
+  - *Stap 3 (Geometrische Terugvaloptie / Centroid)*: Is het adres leeg of kan de geocoder het adres niet vinden? Dan berekent de generator het **meetkundig zwaartepunt (centroid)** van alle aan deze afdeling gekoppelde deelgemeenteshapes:
+    ```python
+    mask = gdf_selected['cluster_name'] == dept.name
+    if mask.any():
+        centroid = gdf_selected[mask].geometry.union_all().centroid
+        final_lat, final_lon = centroid.y, centroid.x
+    ```
+    Hierdoor wordt het pinnetje automatisch netjes in het geografische midden van het werkingsgebied van de afdeling geplaatst.
+  - *Stap 4 (Volledig ontbrekende locatie)*: Heeft een afdeling géén coördinaten, géén adres én géén gekoppelde shapes? Dan wordt de marker veilig overgeslagen. Er ontstaat geen crash en de rest van de kaart genereert normaal.
+  - *In Pop-ups*: Als `dept.address` ontbreekt, toont de pop-up `"Geen adres"`.
+- **Postadres (`postal_address`)**:
+  - Een optioneel afwijkend postbus- of secretariaatsadres. Indien leeg, wordt deze regel volledig weggelaten uit de pop-up. Indien ingevuld, verschijnt een extra regel `Postadres: ...`.
+- **Voertuigen (`Vehicle`)**:
+  - *Adres-erfenis*: Als een voertuig geen specifiek adres heeft (`v.address` is leeg), **erft het automatisch het hoofdadres van de afdeling**:
+    ```python
+    v_addr = v.address if v.address else dept.address
+    ```
+  - *Coördinaten-erfenis*: Ontbreken de coördinaten van het voertuig? Dan probeert het systeem het afdelingsadres te geocoderen of neemt het de `final_lat` en `final_lon` van de afdeling over.
+- **SIT-locaties (`SitLocation`)**:
+  - Als het adres leeg is, toont de pop-up `"Geen adres"`. Indien noch coördinaten noch een adres gekend zijn, wordt de SIT-locatie overgeslagen.
+
+### 2. Website URL (`website_override`)
+- **Standaard Rode Kruis Conventie**: Als `dept.website_override` leeggelaten wordt, genereert het systeem automatisch de officiële website-URL op basis van de afdelingsnaam:
+  ```python
+  website_url = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"
+  ```
+- **Vrijwilligersknop**: De knop *"Word vrijwilliger"* in de pop-up verwijst automatisch door naar:
+  `{website_url}/wat-kan-jij-doen/word-vrijwilliger/`
+- **Uitzondering voor Provinciale Zetels**: Bij entiteiten van het type `provinciale_zetel` worden de website-link en de *"Word vrijwilliger"*-knop bewust weggelaten uit de pop-up.
+
+### 3. E-mailadres (`email`)
+- Indien leeg (`None`), valt het veld terug op een lege string `""`.
+- In de standaard afdelingspop-up blijft de e-maillink leeg of wordt deze niet storend getoond.
+- Bij **112-standplaatsen** verschijnt bij afwezigheid van een e-mailadres expliciet de tekst: `"Geen e-mailadres gekend"`.
+
+### 4. Telefoonnummer (`telephone`)
+- Dit veld is optioneel in de databank (`nullable=True`).
+- Het wordt bewaard voor administratieve doeleinden en gebruikersoverzichten in het beheerpaneel, maar wordt in de compacte publieke en interne kaartpop-ups niet getoond om de pop-up overzichtelijk te houden.
+
+### 5. Kleurcode (`color`)
+- Als er geen hex-kleurcode is gekozen bij het aanmaken van een afdeling (`dept.color` is leeg), valt de generator automatisch terug op de officiële Rode Kruis rode basiskleur:
+  ```python
+  color = d.color or "#d32f2f"
+  ```
+
+### 6. Regio en Cluster Hiërarchie
+- Indien een afdeling nog niet is ingedeeld in een formele `Region`, valt de generator terug op het legacy tekstveld `d.group`. Als ook dat ontbreekt, krijgt de afdeling de aanduiding `"Geen Regio"`.
+- Het label-algoritme slaat afdelingen met `"Geen Regio"` automatisch over bij het genereren van regiogrenzen en -titels, zodat er geen loze tekstlabels op de kaart zweven.
+- Als een shape in `department_shapes` geen `hoofdgemeente` heeft, valt het systeem automatisch terug op de `deelgemeente`:
+  ```python
+  gdf_selected['hoofdgemeente'] = gdf_selected['hoofdgemeente'].fillna(gdf_selected['deelgemeente'])
+  ```
+
+---
+
+## 8. Regels en Algoritmes rond Plaatsing van Tekstlabels
+
+Om te vermijden dat een kaart volloopt met onleesbare of overlappende teksten, hanteert de generator geavanceerde cartografische regels en ruimtelijke wiskunde voor elk labeltype:
+
+```mermaid
+flowchart TD
+    Start[Vectordata & Polygonen ingeladen] --> TypeCheck{Welk Labeltype?}
+    
+    TypeCheck -->|Gemeente & Afdeling| RepPoint[Bereken representative_point]
+    RepPoint --> GuardInPoly[Punt ligt GEGARANDEERD binnen polygoon]
+    GuardInPoly --> StyleSmall[11px - 12px met witte halo text-shadow]
+    
+    TypeCheck -->|Cluster| ClusterRep[Bereken representative_point op werkgroep]
+    ClusterRep --> StyleBlue[14px blauw met witte halo]
+    
+    TypeCheck -->|Regio| MapScope{Kaarttype?}
+    MapScope -->|Vlaanderen| RegRep[representative_point op regio]
+    MapScope -->|Provincie| CollAvoid[Botsingspreventie Algoritme]
+    
+    CollAvoid --> Candidates[Genereer 4 kandidaten: Boven, Links, Rechts, Onder]
+    Candidates --> OverlapCheck{Botst met andere regio?}
+    OverlapCheck -->|Ja| NextCand[Volgende kandidaat proberen]
+    OverlapCheck -->|Nee| BestCand[Kies eerste vrije positie buiten buurregio's]
+    
+    BestCand --> StyleBig[22px ALL-CAPS bold met multi-directionele halo]
+    RegRep --> StyleBig
+    
+    StyleSmall --> CSSRule[pointer-events: none & translate -50% -50%]
+    StyleBlue --> CSSRule
+    StyleBig --> CSSRule
+```
+
+### 1. Gebruik van `representative_point()` in plaats van `centroid`
+Voor de plaatsing van **gemeentelabels**, **afdelingslabels** en **clusterlabels** gebruikt het systeem bewust niet het zwaartepunt (`centroid`), maar de Shapely-functie `representative_point()`:
+- **Het probleem met centroids**: Bij langgerekte, u-vormige, holle of hoefijzervormige gemeenten valt het wiskundige zwaartepunt vaak *buiten* de grenzen van de eigen gemeente (bijvoorbeeld in een buurgemeente of in het water).
+- **De oplossing**: `representative_point()` berekent via topologische triangulatie een punt dat **gegarandeerd binnen het oppervlak van de polygoon ligt**. Hierdoor staat het gemeentelabel altijd op het eigen grondgebied.
+
+### 2. Typografie en Stijlen per Labelgroep
+
+| Labelgroep | Feature Group | Doelgroep | Lettergrootte & Stijl | Kleur & Effect |
+| :--- | :--- | :--- | :--- | :--- |
+| **Gemeente** | `fg_label_gem` | Hoofdgemeenten | 11px, Bold | `#333333` (Donkergrijs) met witte halo (`text-shadow: 2px 2px 3px #fff`) |
+| **Afdeling** | `fg_label_afd` | Afdelingsclusters | 12px, Bold | `#d32f2f` (Rode Kruis Rood) met witte halo (`text-shadow: 2px 2px 3px #fff`) |
+| **Cluster** | `fg_label_sam` | Werkingsgebieden | 14px, Bold | `#0066FF` (Helderblauw) met witte halo (`text-shadow: 2px 2px 4px #fff`) |
+| **Regio** | `fg_label_regio` | Grote regio's | 22px, Bold, ALL-CAPS | `#333333` met zware 5-punts halo (`text-shadow: 2px 2px 4px #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff`) |
+
+### 3. Botsingspreventie-algoritme voor Regiolabels
+Regiolabels (`fg_label_regio`) hebben een fontgrootte van 22px en beslaan een grote oppervlakte. Om te voorkomen dat regiotitels elkaar overlappen of over elkaars buitengrens heen vallen, past de generator op provinciale kaarten een **kandidaat-gebaseerd ontwijkingsalgoritme** toe:
+1. De bounding box (`bounds`) en het zwaartepunt (`centroid`) van de regio worden berekend.
+2. Er worden vier ruimtelijke kandidaatposities berekend rond de randen van het gebied:
+   - **Boven**: `(bounds[3] + 0.015, centroid.x)`
+   - **Links**: `(centroid.y, bounds[0] - 0.025)`
+   - **Rechts**: `(centroid.y, bounds[2] + 0.025)`
+   - **Onder**: `(bounds[1] - 0.015, centroid.x)`
+3. Alle overige regio's binnen de provincie worden samengevoegd tot één geometrisch masker (`other_regions.union_all()`).
+4. Het algoritme loopt de kandidaten af en toetst via `other_regions.contains(Point(cand_lon, cand_lat))`:
+   - De **eerste kandidaatpositie die géén overlap vertoont met het grondgebied van een andere regio**, wordt gekozen als definitief labelanker.
+   - Wordt er geen vrije rand gevonden, dan valt het systeem terug op het zwaartepunt van de eigen regio.
+
+### 4. Technische CSS & Interactieregels voor Labels
+Elk label op de kaart wordt geïnjecteerd via een Folium `DivIcon` met strikte CSS-parameters:
+- **`pointer-events: none;`**: Labels 'vangen' geen muisgebeurtenissen of aanrakingen op. Hierdoor kan een gebruiker dwars door een tekstlabel heen klikken op onderliggende afdelingen, voertuigmarkers of pop-ups.
+- **`transform: translate(-50%, -50%);`**: Zorgt ervoor dat het middelpunt van de tekst exact op de berekende coördinaat ligt in plaats van de linkerbovenhoek.
+- **`white-space: nowrap;`**: Garandeert dat namen van gemeenten en afdelingen op één lijn blijven en niet lelijk afbreken over meerdere regels.
+- **Witte Halo / Tekstschaduw**: Omdat de onderliggende kaart kan variëren (van een lichte CartoDB achtergrond tot felgekleurde afdelingsvlakken of satellietkaarten), zorgt de witte halo ervoor dat letters altijd een scherp contrast behouden en direct leesbaar zijn.
