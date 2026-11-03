@@ -4,35 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inloggen - Rode Kruis Map Generator</title>
+    <!-- FontAwesome voor strakke iconen -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { color: #d32f2f; margin-top: 0; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #d32f2f; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 35px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 400px; }
+        h2 { color: #d32f2f; margin-top: 0; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 12px; font-size: 20px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #444; font-size: 13px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 11px 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,0.1); }
+        button { background-color: #d32f2f; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; transition: background-color 0.2s; }
         button:hover { background-color: #b71c1c; }
-        .error { color: #d32f2f; text-align: center; margin-bottom: 15px; font-size: 14px; }
+        .error { color: #d32f2f; text-align: center; margin-bottom: 15px; font-size: 14px; background: #ffebee; padding: 8px 12px; border-radius: 4px; }
+        .help-footer { margin-top: 22px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; }
+        .help-footer a { color: #1976d2; font-size: 13px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.2s; }
+        .help-footer a:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
 <div class="login-card">
-    <h2>Rode Kruis Inloggen</h2>
+    <h2><i class="fa-solid fa-map-location-dot" style="margin-right: 8px;"></i>Rode Kruis Inloggen</h2>
     {% if error %}
     <div class="error">{{ error }}</div>
     {% endif %}
     <form action="/login" method="POST">
         <div class="form-group">
             <label for="username">Gebruikersnaam:</label>
-            <input type="text" id="username" name="username" required>
+            <input type="text" id="username" name="username" required autocomplete="username">
         </div>
         <div class="form-group">
             <label for="password">Wachtwoord:</label>
-            <input type="password" id="password" name="password" required>
+            <input type="password" id="password" name="password" required autocomplete="current-password">
         </div>
-        <button type="submit">Inloggen</button>
+        <button type="submit"><i class="fa-solid fa-right-to-bracket" style="margin-right: 6px;"></i>Inloggen</button>
     </form>
+
 </div>
 </body>
 </html>

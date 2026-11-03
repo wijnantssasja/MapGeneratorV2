@@ -48,7 +48,10 @@ templates = Jinja2Templates(directory="templates")
 
 # Route om de statische kaart daadwerkelijk te kunnen bekijken
 
-app.mount("/static", StaticFiles(directory="/opt/MapGenerator/static"), name="static")
+STATIC_DIR = "/opt/MapGenerator/static" if os.path.exists("/opt/MapGenerator/static") else os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(os.path.join(STATIC_DIR, "help", "screenshots"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def verify_edit_permission(user: User, target_province: str):
@@ -98,7 +101,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     # HARD-LOCK: Mag deze gebruiker rondkijken, of MOET het wachtwoord gereset worden?
     if user and getattr(user, 'force_password_change', False):
         # Ze mogen enkel naar de reset pagina (om te wijzigen) of naar logout (om weg te gaan)
-        allowed_paths = ["/profile/force-password-change", "/logout"]
+        allowed_paths = ["/profile/force-password-change", "/logout", "/help"]
         if request.url.path not in allowed_paths:
             # BAM! Teruggestuurd.
             raise ForcePasswordChangeException()
@@ -194,6 +197,18 @@ async def login(request: Request, username: str = Form(...), password: str = For
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/help", response_class=HTMLResponse)
+async def help_page(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(
+        request=request,
+        name="help.html",
+        context={"user": current_user}
+    )
 
 
 # ---------------------------------------------------------
