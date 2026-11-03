@@ -614,12 +614,12 @@
         }
 
         /* Special Section 7 Styling */
-        .section-7-card {
+        .blanco-card {
             border-top: 5px solid var(--primary-red);
             background: #fff;
         }
 
-        .section-7-header {
+        .blanco-header {
             background: linear-gradient(90deg, #ffebee 0%, #ffffff 100%);
             border-radius: 8px;
             padding: 15px 20px;
@@ -627,7 +627,7 @@
             border: 1px solid #ffcdd2;
         }
 
-        .section-7-header h3 {
+        .blanco-header h3 {
             color: var(--primary-red);
             margin: 0 0 5px 0;
             font-size: 22px;
@@ -774,7 +774,7 @@
 
         <div class="search-container">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="helpSearch" class="search-input" placeholder="Zoek in documentatie (bijv. centroid, blanco gegevens, RBAC, SIT, 112)..." onkeyup="filterHelpTopics()">
+            <input type="text" id="helpSearch" class="search-input" placeholder="Zoek in documentatie (bijv. afdeling, blanco gegevens, SIT, 112)..." onkeyup="filterHelpTopics()">
         </div>
 
         <div class="header-actions">
@@ -783,7 +783,7 @@
             </button>
             {% if user %}
             <a href="/" class="btn-action btn-action-back" title="Terug naar dashboard">
-                <i class="fa-solid fa-arrow-left"></i> Naar Applicatie
+                <i class="fa-solid fa-arrow-left"></i> Naar applicatie
             </a>
             {% else %}
             <a href="/login" class="btn-action btn-action-back" title="Inloggen">
@@ -825,7 +825,7 @@
             <div class="sidebar-section-title">Beheer & Beveiliging</div>
             <ul class="sidebar-menu">
                 <li><a href="#audit-logs" class="sidebar-link"><i class="fa-solid fa-clock-rotate-left"></i> Logboek (Audit Trail)</a></li>
-                <li><a href="#gebruikersbeheer" class="sidebar-link"><i class="fa-solid fa-user-gear"></i> Gebruikers (RBAC)</a></li>
+                <li><a href="#gebruikersbeheer" class="sidebar-link"><i class="fa-solid fa-user-gear"></i> Gebruikers</a></li>
                 <li><a href="#wachtwoord" class="sidebar-link"><i class="fa-solid fa-key"></i> Wachtwoord & Profiel</a></li>
                 <li><a href="#inloggen" class="sidebar-link"><i class="fa-solid fa-right-to-bracket"></i> Inloggen & Sessies</a></li>
             </ul>
@@ -834,7 +834,7 @@
             <ul class="sidebar-menu">
                 <li>
                     <a href="#blanco-gegevens" class="sidebar-link" style="color: var(--primary-red); font-weight: 700;">
-                        <i class="fa-solid fa-triangle-exclamation" style="color: var(--primary-red);"></i> Sectie 7: Blanco Gegevens
+                        <i class="fa-solid fa-triangle-exclamation" style="color: var(--primary-red);"></i> Blanco Gegevens
                         <span class="badge-special">Cruciaal</span>
                     </a>
                 </li>
@@ -846,10 +846,10 @@
 
             <!-- Hero Intro -->
             <div class="hero-banner" id="inleiding">
-                <h2>Welkom bij het Rode Kruis Helpcentrum</h2>
+                <h2>Welkom bij het helpcentrum</h2>
                 <p>
-                    Deze interactieve handleiding biedt een volledig overzicht van alle functionaliteiten, webpagina's en cartografische regels binnen de <strong>Rode Kruis Map Generator V2</strong>.
-                    Gebruik het linkermenu om direct naar een specifiek onderdeel te navigeren, of raadpleeg de strikte regels rond het afhandelen van ontbrekende data in Sectie 7.
+                    Deze interactieve handleiding biedt een volledig overzicht van alle functionaliteiten, webpagina's en cartografische regels binnen de <b>Rode Kruis Map Generator V2</b>.
+                    Gebruik het linkermenu om direct naar een specifiek onderdeel te navigeren, of raadpleeg de strikte regels rond het afhandelen van ontbrekende data in 'Blanco Gegevens'.
                 </p>
                 <div class="hero-tags">
                     <span class="hero-tag"><i class="fa-solid fa-shield-halved"></i> Rolgebaseerd Beheer (RBAC)</span>
@@ -889,7 +889,7 @@
                     <img src="/static/help/screenshots/dashboard.png" alt="Schermafbeelding Dashboard" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Dashboard</strong>
+                        <b>Schermafbeelding: Dashboard</b>
                         <span>Plaats het bestand <code>static/help/screenshots/dashboard.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
@@ -906,7 +906,7 @@
                         <i class="fa-solid fa-eye-slash feature-item-icon"></i>
                         <div class="feature-item-content">
                             <h4>Publieke vs. Interne Versie</h4>
-                            <p>Vink <strong>Publieke versie genereren</strong> aan om vertrouwelijke operationele gegevens zoals SIT-locaties, 112-ambulances en interne disciplines te verbergen.</p>
+                            <p>Vink <b>Publieke versie genereren</b> aan om vertrouwelijke operationele gegevens zoals SIT-locaties, 112-ambulances en interne disciplines te verbergen.</p>
                         </div>
                     </div>
                     <div class="feature-item">
@@ -926,8 +926,8 @@
                 </div>
 
                 <div class="callout callout-warning">
-                    <strong><i class="fa-solid fa-circle-exclamation"></i> Concurrency Beperking:</strong>
-                    Er kunnen maximaal <strong>2 kaartgeneraties gelijktijdig</strong> draaien om overbelasting van het geheugen en de processor te voorkomen.
+                    <b><i class="fa-solid fa-circle-exclamation"></i> Concurrency Beperking:</b>
+                    Er kunnen maximaal <b>2 kaartgeneraties gelijktijdig</b> draaien om overbelasting van het geheugen en de processor te voorkomen.
                 </div>
             </section>
 
@@ -960,15 +960,15 @@
                     <img src="/static/help/screenshots/preview_map.png" alt="Schermafbeelding Kaart Preview" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Kaart Preview</strong>
+                        <b>Schermafbeelding: Kaart Preview</b>
                         <span>Plaats het bestand <code>static/help/screenshots/preview_map.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <ul class="steps-list">
-                    <li><strong>Volledig Scherm Weergave:</strong> De kaart laadt met alle Leaflet lagen (satelliet, stratenkaart, afdelingsgrenzen, clusters, SIT-markers en voertuigen).</li>
-                    <li><strong>Download HTML Knop:</strong> Downloadt een zelfstandig HTML-bestand. Dit bestand vereist geen actieve backend server en kan lokaal op laptops of tablets worden geopend, zelfs zonder internetverbinding.</li>
-                    <li><strong>Interactieve Laagbediening:</strong> Rechtsboven op de kaart kunnen gebruikers lagen aan- en uitvinken (bijv. gemeentegrenzen, disciplines, posten).</li>
+                    <li><b>Volledig Scherm Weergave:</b> De kaart laadt met alle Leaflet lagen (satelliet, stratenkaart, afdelingsgrenzen, clusters, SIT-markers en voertuigen).</li>
+                    <li><b>Download HTML Knop:</b> Downloadt een zelfstandig HTML-bestand. Dit bestand vereist geen actieve backend server en kan lokaal op laptops of tablets worden geopend, zelfs zonder internetverbinding.</li>
+                    <li><b>Interactieve Laagbediening:</b> Rechtsboven op de kaart kunnen gebruikers lagen aan- en uitvinken (bijv. gemeentegrenzen, disciplines, posten).</li>
                 </ul>
             </section>
 
@@ -1001,7 +1001,7 @@
                     <img src="/static/help/screenshots/departments.png" alt="Schermafbeelding Afdelingen Overzicht" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Afdelingen Overzicht</strong>
+                        <b>Schermafbeelding: Afdelingen Overzicht</b>
                         <span>Plaats het bestand <code>static/help/screenshots/departments.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
@@ -1018,7 +1018,7 @@
                         <i class="fa-solid fa-lock feature-item-icon"></i>
                         <div class="feature-item-content">
                             <h4>Automatische Read-Only Modus</h4>
-                            <p>Provinciale gebruikers zien bij afdelingen binnen hun provincie een blauwe knop <strong>Bewerk</strong>, maar bij afdelingen buiten hun provincie een grijze knop <strong>Bekijk</strong> (alleen-lezen).</p>
+                            <p>Provinciale gebruikers zien bij afdelingen binnen hun provincie een blauwe knop <b>Bewerk</b>, maar bij afdelingen buiten hun provincie een grijze knop <b>Bekijk</b> (alleen-lezen).</p>
                         </div>
                     </div>
                     <div class="feature-item">
@@ -1067,7 +1067,7 @@
                     <img src="/static/help/screenshots/edit_department.png" alt="Schermafbeelding Afdeling Bewerken" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Afdeling Bewerken</strong>
+                        <b>Schermafbeelding: Afdeling Bewerken</b>
                         <span>Plaats het bestand <code>static/help/screenshots/edit_department.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
@@ -1082,34 +1082,34 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>Basisgegevens</strong></td>
+                            <td><b>Basisgegevens</b></td>
                             <td>Naam van de afdeling, provincie, koppeling aan Regio en Cluster, en de kaartkleur (hexadecimaal of via de colorpicker).</td>
                         </tr>
                         <tr>
-                            <td><strong>Adres & Coördinaten</strong></td>
+                            <td><b>Adres & Coördinaten</b></td>
                             <td>
                                 Vul het fysieke adres in. De coördinaten (breedtegraad en lengtegraad) mogen leeg blijven; het systeem past dan automatische geocoding of de centroid-terugvalregel toe.
-                                <br><a href="#blanco-gegevens" style="color: var(--primary-red); font-weight: 600;">Zie Sectie 7 voor de exacte cascade &rarr;</a>
+                                <br><a href="#blanco-gegevens" style="color: var(--primary-red); font-weight: 600;">Zie 'Blanco gegevens' voor de exacte cascade &rarr;</a>
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Postadres (Optioneel)</strong></td>
+                            <td><b>Postadres (Optioneel)</b></td>
                             <td>Een afwijkend correspondentie- of postbusadres. Indien leeg wordt dit veld weggelaten uit de kaartpop-up.</td>
                         </tr>
                         <tr>
-                            <td><strong>Contactgegevens & Website</strong></td>
+                            <td><b>Contactgegevens & Website</b></td>
                             <td>E-mailadres, telefoonnummer en een optionele aangepaste website-URL. Bij afwezigheid van een URL wordt automatisch de officiële Rode Kruis link gegenereerd.</td>
                         </tr>
                         <tr>
-                            <td><strong>Disciplines & Diensten</strong></td>
+                            <td><b>Disciplines & Diensten</b></td>
                             <td>Vink de actieve disciplines aan: Hulpdienst, Vorming, Jeugd, Zorgbib, Bloed, Brugfiguren, Uitleendienst en Internationale Samenwerking.</td>
                         </tr>
                         <tr>
-                            <td><strong>Voertuigen & Ambulances</strong></td>
+                            <td><b>Voertuigen & Ambulances</b></td>
                             <td>Beheer de ziekenwagens van deze afdeling. Indien meerdere voertuigen op hetzelfde adres staan, bundelt de kaart ze via een numerieke badge (bijv. "3") met een gegroepeerde pop-up.</td>
                         </tr>
                         <tr>
-                            <td><strong>Interactieve Deelgemeentekaart</strong></td>
+                            <td><b>Interactieve Deelgemeentekaart</b></td>
                             <td>Klik direct op de kaart om deelgemeenten toe te voegen aan of te ontkoppelen van deze afdeling. Gekoppelde vormen worden direct opgeslagen in de databank.</td>
                         </tr>
                     </tbody>
@@ -1145,13 +1145,13 @@
                     <img src="/static/help/screenshots/merge_departments.png" alt="Schermafbeelding Afdelingen Fusie" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Afdelingen Fusie</strong>
+                        <b>Schermafbeelding: Afdelingen Fusie</b>
                         <span>Plaats het bestand <code>static/help/screenshots/merge_departments.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <div class="callout callout-danger">
-                    <strong><i class="fa-solid fa-triangle-exclamation"></i> Let op bij een fusie:</strong>
+                    <b><i class="fa-solid fa-triangle-exclamation"></i> Let op bij een fusie:</b>
                     De bronafdeling wordt na afloop van de fusie definitief uit de lijst van actieve afdelingen verwijderd. De actie wordt geregistreerd in het audit logboek. Zorg ervoor dat je de juiste doelafdeling selecteert!
                 </div>
             </section>
@@ -1185,14 +1185,14 @@
                     <img src="/static/help/screenshots/provinciale_zetels.png" alt="Schermafbeelding Provinciale Zetels" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Provinciale Zetels</strong>
+                        <b>Schermafbeelding: Provinciale Zetels</b>
                         <span>Plaats het bestand <code>static/help/screenshots/provinciale_zetels.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <div class="callout callout-warning">
-                    <strong><i class="fa-solid fa-circle-info"></i> Specifieke Cartografische Uitzondering voor Zetels:</strong>
-                    In tegenstelling tot reguliere afdelingen, worden bij provinciale zetels de website-link en de knop <em>"Word vrijwilliger"</em> <strong>bewust weggelaten</strong> uit de kaartpop-up (zie Sectie 7.2). Ze worden aangeduid met een herkenbaar landmark-icoon.
+                    <b><i class="fa-solid fa-circle-info"></i> Specifieke Cartografische Uitzondering voor Zetels:</b>
+                    In tegenstelling tot reguliere afdelingen, worden bij provinciale zetels de website-link en de knop <em>"Word vrijwilliger"</em> <b>bewust weggelaten</b> uit de kaartpop-up (zie 'Blanco gegevens'). Ze worden aangeduid met een herkenbaar landmark-icoon.
                 </div>
             </section>
 
@@ -1225,15 +1225,15 @@
                     <img src="/static/help/screenshots/sit_locations.png" alt="Schermafbeelding SIT Locaties" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: SIT Locaties</strong>
+                        <b>Schermafbeelding: SIT Locaties</b>
                         <span>Plaats het bestand <code>static/help/screenshots/sit_locations.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <ul class="steps-list">
-                    <li><strong>Privacy & Veiligheid:</strong> SIT-markers worden <em>uitsluitend</em> op interne kaarten getoond. Bij het genereren van een publieke kaart worden deze automatisch gefilterd.</li>
-                    <li><strong>Voertuigenbeheer:</strong> Aan elke SIT-locatie kunnen specifieke voertuigen (bijv. SIT-wagens, materiaalwagens) worden gekoppeld.</li>
-                    <li><strong>Adresregels:</strong> Indien het adres leeg is, toont de pop-up `"Geen adres"`. Als noch een adres noch coördinaten gekend zijn, wordt de marker overgeslagen.</li>
+                    <li><b>Privacy & Veiligheid:</b> SIT-markers worden <em>uitsluitend</em> op interne kaarten getoond. Bij het genereren van een publieke kaart worden deze automatisch gefilterd.</li>
+                    <li><b>Voertuigenbeheer:</b> Aan elke SIT-locatie kunnen specifieke voertuigen (bijv. SIT-wagens, materiaalwagens) worden gekoppeld.</li>
+                    <li><b>Adresregels:</b> Indien het adres leeg is, toont de pop-up `"Geen adres"`. Als noch een adres noch coördinaten gekend zijn, wordt de marker overgeslagen.</li>
                 </ul>
             </section>
 
@@ -1266,14 +1266,14 @@
                     <img src="/static/help/screenshots/112_standplaatsen.png" alt="Schermafbeelding 112 Standplaatsen" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: 112 Standplaatsen</strong>
+                        <b>Schermafbeelding: 112 Standplaatsen</b>
                         <span>Plaats het bestand <code>static/help/screenshots/112_standplaatsen.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <div class="callout callout-warning">
-                    <strong><i class="fa-solid fa-envelope"></i> Specifieke Regel voor 112 E-mailadressen:</strong>
-                    Wanneer bij een 112-standplaats geen e-mailadres is ingevuld, verschijnt in de kaartpop-up expliciet de tekst: <code>"Geen e-mailadres gekend"</code> (zie Sectie 7.3).
+                    <b><i class="fa-solid fa-envelope"></i> Specifieke Regel voor 112 E-mailadressen:</b>
+                    Wanneer bij een 112-standplaats geen e-mailadres is ingevuld, verschijnt in de kaartpop-up expliciet de tekst: <code>"Geen e-mailadres gekend"</code> (zie 'Blanco gegevens').
                 </div>
             </section>
 
@@ -1306,16 +1306,16 @@
                     <img src="/static/help/screenshots/regions.png" alt="Schermafbeelding Regio's" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Regio's</strong>
+                        <b>Schermafbeelding: Regio's</b>
                         <span>Plaats het bestand <code>static/help/screenshots/regions.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <h4>Cartografische Regels voor Regiolabels:</h4>
                 <ul class="steps-list">
-                    <li><strong>Botsingspreventie (Provinciekaarten):</strong> De generator genereert 4 kandidaatposities (Boven, Links, Rechts, Onder) rond het representatieve punt en kiest de eerste positie die niet botst met buurregio's.</li>
-                    <li><strong>Overkoepelende Vlaanderen-kaart:</strong> Op overzichtskaarten wordt het meetkundig zwaartepunt (representative point) direct in het centrum van de regio geplaatst met een witte halo-schaduw.</li>
-                    <li><strong>Uitsluiting van "Geen Regio":</strong> Afdelingen die niet aan een regio zijn toegewezen krijgen automatisch de aanduiding <em>"Geen Regio"</em> en worden overgeslagen door het labelalgoritme zodat er geen loze teksten zweven.</li>
+                    <li><b>Botsingspreventie (Provinciekaarten):</b> De generator genereert 4 kandidaatposities (Boven, Links, Rechts, Onder) rond het representatieve punt en kiest de eerste positie die niet botst met buurregio's.</li>
+                    <li><b>Overkoepelende Vlaanderen-kaart:</b> Op overzichtskaarten wordt het meetkundig zwaartepunt (representative point) direct in het centrum van de regio geplaatst met een witte halo-schaduw.</li>
+                    <li><b>Uitsluiting van "Geen Regio":</b> Afdelingen die niet aan een regio zijn toegewezen krijgen automatisch de aanduiding <em>"Geen Regio"</em> en worden overgeslagen door het labelalgoritme zodat er geen loze teksten zweven.</li>
                 </ul>
             </section>
 
@@ -1348,7 +1348,7 @@
                     <img src="/static/help/screenshots/clusters.png" alt="Schermafbeelding Clusters" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Clusters</strong>
+                        <b>Schermafbeelding: Clusters</b>
                         <span>Plaats het bestand <code>static/help/screenshots/clusters.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
@@ -1383,7 +1383,7 @@
                     <img src="/static/help/screenshots/vrijwilligerskorpsen.png" alt="Schermafbeelding Vrijwilligerskorpsen" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Vrijwilligerskorpsen</strong>
+                        <b>Schermafbeelding: Vrijwilligerskorpsen</b>
                         <span>Plaats het bestand <code>static/help/screenshots/vrijwilligerskorpsen.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
@@ -1435,17 +1435,17 @@
                     <img src="/static/help/screenshots/audit_logs.png" alt="Schermafbeelding Audit Logs" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Logboek</strong>
+                        <b>Schermafbeelding: Logboek</b>
                         <span>Plaats het bestand <code>static/help/screenshots/audit_logs.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <h4>Geregistreerde Gegevens:</h4>
                 <ul class="steps-list">
-                    <li><strong>Gebruikersnaam:</strong> Wie heeft de wijziging aangebracht?</li>
-                    <li><strong>Actie:</strong> CREATE, UPDATE, DELETE of MERGE.</li>
-                    <li><strong>Doeltabel & Rij:</strong> De specifieke entiteit (bijv. <code>departments</code>, afdelingsnaam).</li>
-                    <li><strong>Details & Timestamp:</strong> Gedetailleerde omschrijving van de gewijzigde velden en het exacte tijdstip.</li>
+                    <li><b>Gebruikersnaam:</b> Wie heeft de wijziging aangebracht?</li>
+                    <li><b>Actie:</b> CREATE, UPDATE, DELETE of MERGE.</li>
+                    <li><b>Doeltabel & Rij:</b> De specifieke entiteit (bijv. <code>departments</code>, afdelingsnaam).</li>
+                    <li><b>Details & Timestamp:</b> Gedetailleerde omschrijving van de gewijzigde velden en het exacte tijdstip.</li>
                 </ul>
             </section>
 
@@ -1466,7 +1466,7 @@
                 </div>
 
                 <p>
-                    Deze pagina is uitsluitend toegankelijk voor gebruikers met de rol <strong>admin</strong>. Hier beheer je accounts, wachtwoorden en permissies.
+                    Deze pagina is uitsluitend toegankelijk voor gebruikers met de rol <b>admin</b>. Hier beheer je accounts, wachtwoorden en permissies.
                 </p>
 
                 <div class="screenshot-container">
@@ -1478,7 +1478,7 @@
                     <img src="/static/help/screenshots/users.png" alt="Schermafbeelding Gebruikersbeheer" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Gebruikersbeheer</strong>
+                        <b>Schermafbeelding: Gebruikersbeheer</b>
                         <span>Plaats het bestand <code>static/help/screenshots/users.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
@@ -1493,22 +1493,22 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>admin</strong></td>
+                            <td><b>admin</b></td>
                             <td>Volledige toegang tot alle kaarten, alle provincies, auditlogs én het gebruikersbeheer.</td>
                         </tr>
                         <tr>
-                            <td><strong>nationaal</strong></td>
+                            <td><b>nationaal</b></td>
                             <td>Kan alle afdelingen, zetels, regio's en SIT in heel Vlaanderen bewerken en kaarten genereren. Geen toegang tot gebruikersbeheer.</td>
                         </tr>
                         <tr>
-                            <td><strong>provinciaal</strong></td>
-                            <td>Kan heel Vlaanderen raadplegen, maar heeft <strong>uitsluitend schrijfrechten binnen de eigen toegewezen provincie</strong>. Buiten de eigen provincie schakelt de interface automatisch over naar read-only.</td>
+                            <td><b>provinciaal</b></td>
+                            <td>Kan heel Vlaanderen raadplegen, maar heeft <b>uitsluitend schrijfrechten binnen de eigen toegewezen provincie</b>. Buiten de eigen provincie schakelt de interface automatisch over naar read-only.</td>
                         </tr>
                     </tbody>
                 </table>
 
                 <div class="callout callout-warning">
-                    <strong><i class="fa-solid fa-key"></i> Geforceerde Wachtwoordwijziging (Hard-Lock):</strong>
+                    <b><i class="fa-solid fa-key"></i> Geforceerde Wachtwoordwijziging (Hard-Lock):</b>
                     Als een beheerder <em>"Verplicht wachtwoordwijziging bij volgende login"</em> aanvinkt, wordt de gebruiker bij de volgende aanmelding direct vergrendeld op het wachtwoordwijzigingsscherm totdat een nieuw wachtwoord is ingesteld.
                 </div>
             </section>
@@ -1542,14 +1542,14 @@
                     <img src="/static/help/screenshots/change_password.png" alt="Schermafbeelding Wachtwoord Wijzigen" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Wachtwoord Wijzigen</strong>
+                        <b>Schermafbeelding: Wachtwoord Wijzigen</b>
                         <span>Plaats het bestand <code>static/help/screenshots/change_password.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <ul class="steps-list">
-                    <li>Vul het <strong>Huidige wachtwoord</strong> ter verificatie in.</li>
-                    <li>Kies een <strong>Nieuw wachtwoord</strong> en bevestig dit.</li>
+                    <li>Vul het <b>Huidige wachtwoord</b> ter verificatie in.</li>
+                    <li>Kies een <b>Nieuw wachtwoord</b> en bevestig dit.</li>
                     <li>Wachtwoorden worden veilig gehasht via het <code>bcrypt</code>-algoritme met unieke salt.</li>
                 </ul>
             </section>
@@ -1583,52 +1583,39 @@
                     <img src="/static/help/screenshots/login.png" alt="Schermafbeelding Inloggen" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="screenshot-placeholder">
                         <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Inloggen</strong>
+                        <b>Schermafbeelding: Inloggen</b>
                         <span>Plaats het bestand <code>static/help/screenshots/login.png</code> om deze afbeelding te tonen.</span>
                     </div>
                 </div>
 
                 <div class="callout callout-warning">
-                    <strong><i class="fa-solid fa-stopwatch"></i> Automatische Time-out na 4 Uur:</strong>
-                    Na <strong>4 uur inactiviteit</strong> (14.400 seconden) verloopt de sessie automatisch. De gebruiker wordt veilig uitgelogd en teruggestuurd naar het inlogscherm.
+                    <b><i class="fa-solid fa-stopwatch"></i> Automatische Time-out na 4 Uur:</b>
+                    Na <b>4 uur inactiviteit</b> (14.400 seconden) verloopt de sessie automatisch. De gebruiker wordt veilig uitgelogd en teruggestuurd naar het inlogscherm.
                 </div>
             </section>
 
             <!-- ========================================================= -->
-            <!-- 16. SECTIE 7: AFHANDELING VAN BLANCO / ONTBREKENDE GEGEVENS -->
+            <!-- 16. AFHANDELING VAN BLANCO / ONTBREKENDE GEGEVENS -->
             <!-- ========================================================= -->
-            <section class="help-card section-7-card" id="blanco-gegevens">
-                <div class="section-7-header">
+            <section class="help-card blanco-card" id="blanco-gegevens">
+                <div class="blanco-header">
                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
                         <div>
-                            <h3><i class="fa-solid fa-triangle-exclamation"></i> 7. Afhandeling van Blanco / Ontbrekende Gegevens</h3>
+                            <h3><i class="fa-solid fa-triangle-exclamation"></i> Afhandeling van Blanco / Ontbrekende Gegevens</h3>
                             <p style="margin: 0; color: #4b5563; font-size: 14.5px;">
                                 Strikte geautomatiseerde procedures, cascades en fallbacks om crashes en corrupte weergaven te voorkomen wanneer gegevens ontbreken.
                             </p>
                         </div>
-                        <span class="badge badge-danger" style="font-size: 13px; padding: 6px 12px;">Kernalgoritme</span>
                     </div>
                 </div>
 
                 <p>
-                    In operationele omgevingen komt het voor dat niet alle contactgegevens of coördinaten van een afdeling, post of voertuig ingevuld zijn.
+                    In realiteit komt het voor dat niet alle contactgegevens of coördinaten van een afdeling, post of voertuig ingevuld zijn.
                     Het systeem beschikt over strikte, geautomatiseerde procedures en fallbacks om te voorkomen dat de generator vastloopt of dat er corrupte weergaven ontstaan:
                 </p>
 
                 <!-- Screenshot Container Sectie 7 -->
-                <div class="screenshot-container">
-                    <div class="screenshot-top-bar">
-                        <div class="dots"><span></span><span></span><span></span></div>
-                        <span>Schermafbeelding: Blanco & Ontbrekende Gegevens Fallbacks (Sectie 7)</span>
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-                    <img src="/static/help/screenshots/blanco_gegevens.png" alt="Schermafbeelding Blanco Gegevens" class="screenshot-img" onclick="openLightbox(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="screenshot-placeholder">
-                        <div class="placeholder-icon"><i class="fa-solid fa-image"></i></div>
-                        <strong>Schermafbeelding: Blanco & Ontbrekende Gegevens</strong>
-                        <span>Plaats het bestand <code>static/help/screenshots/blanco_gegevens.png</code> om deze afbeelding te tonen.</span>
-                    </div>
-                </div>
+
 
                 <!-- 7.1 ADRES & COÖRDINATEN -->
                 <div class="sub-rule-card">
@@ -1637,19 +1624,19 @@
                         Adres en Coördinaten (<code>address</code>, <code>lat</code>, <code>lon</code>)
                     </h4>
                     
-                    <p><strong>Afdelingen & Hoofdlocaties:</strong></p>
+                    <p><b>Afdelingen & Hoofdlocaties:</b></p>
                     <ul class="steps-list">
                         <li>
-                            <strong>Stap 1 (Handmatige coördinaten):</strong>
+                            <b>Stap 1 (Handmatige coördinaten):</b>
                             Het systeem controleert eerst of <code>dept.lat</code> en <code>dept.lon</code> expliciet zijn ingevuld in de database. Zo ja, dan worden deze exacte waarden gebruikt.
                         </li>
                         <li>
-                            <strong>Stap 2 (Geocoding via API & Cache):</strong>
+                            <b>Stap 2 (Geocoding via API & Cache):</b>
                             Zijn deze leeg, maar is er wel een adres opgegeven (<code>dept.address</code>)? Dan wordt het adres gezocht in de lokale <code>coordinate_cache</code>. Indien niet gevonden, roept het systeem de Nominatim API aan (met verplichte toevoeging van <code>", België"</code> en een strikte 1.1s rate-limiting) en slaat de gevonden coördinaten direct op in de cache.
                         </li>
                         <li>
-                            <strong>Stap 3 (Geometrische Terugvaloptie / Centroid):</strong>
-                            Is het adres leeg of kan de geocoder het adres niet vinden? Dan berekent de generator het <strong>meetkundig zwaartepunt (centroid)</strong> van alle aan deze afdeling gekoppelde deelgemeenteshapes:
+                            <b>Stap 3 (Geometrische Terugvaloptie / Centroid):</b>
+                            Is het adres leeg of kan de geocoder het adres niet vinden? Dan berekent de generator het <b>meetkundig zwaartepunt (centroid)</b> van alle aan deze afdeling gekoppelde deelgemeenteshapes:
                             <div class="code-block">
 mask = gdf_selected['cluster_name'] == dept.name
 if mask.any():
@@ -1659,32 +1646,32 @@ if mask.any():
                             Hierdoor wordt het pinnetje automatisch netjes in het geografische midden van het werkingsgebied van de afdeling geplaatst.
                         </li>
                         <li>
-                            <strong>Stap 4 (Volledig ontbrekende locatie):</strong>
-                            Heeft een afdeling géén coördinaten, géén adres én géén gekoppelde shapes? Dan wordt de marker <strong>veilig overgeslagen</strong>. Er ontstaat geen crash en de rest van de kaart genereert normaal.
+                            <b>Stap 4 (Volledig ontbrekende locatie):</b>
+                            Heeft een afdeling géén coördinaten, géén adres én géén gekoppelde shapes? Dan wordt de marker <b>veilig overgeslagen</b>. Er ontstaat geen crash en de rest van de kaart genereert normaal.
                         </li>
                         <li>
-                            <strong>In Pop-ups:</strong>
+                            <b>In Pop-ups:</b>
                             Als <code>dept.address</code> ontbreekt, toont de kaartpop-up expliciet de tekst <code>"Geen adres"</code>.
                         </li>
                     </ul>
 
-                    <p><strong>Postadres (<code>postal_address</code>):</strong></p>
+                    <p><b>Postadres (<code>postal_address</code>):</b></p>
                     <ul class="steps-list">
-                        <li>Een optioneel afwijkend postbus- of secretariaatsadres. Indien leeg, wordt deze regel <strong>volledig weggelaten</strong> uit de pop-up. Indien ingevuld, verschijnt een extra regel <code>Postadres: ...</code>.</li>
+                        <li>Een optioneel afwijkend postbus- of secretariaatsadres. Indien leeg, wordt deze regel <b>volledig weggelaten</b> uit de pop-up. Indien ingevuld, verschijnt een extra regel <code>Postadres: ...</code>.</li>
                     </ul>
 
-                    <p><strong>Voertuigen (<code>Vehicle</code>):</strong></p>
+                    <p><b>Voertuigen (<code>Vehicle</code>):</b></p>
                     <ul class="steps-list">
                         <li>
-                            <strong>Adres-erfenis:</strong> Als een voertuig geen specifiek adres heeft (<code>v.address</code> is leeg), <strong>erft het automatisch het hoofdadres van de afdeling</strong>:
+                            <b>Adres-erfenis:</b> Als een voertuig geen specifiek adres heeft (<code>v.address</code> is leeg), <b>erft het automatisch het hoofdadres van de afdeling</b>:
                             <div class="code-block">v_addr = v.address if v.address else dept.address</div>
                         </li>
                         <li>
-                            <strong>Coördinaten-erfenis:</strong> Ontbreken de coördinaten van het voertuig? Dan probeert het systeem het afdelingsadres te geocoderen of neemt het de <code>final_lat</code> en <code>final_lon</code> van de moeder-afdeling over.
+                            <b>Coördinaten-erfenis:</b> Ontbreken de coördinaten van het voertuig? Dan probeert het systeem het afdelingsadres te geocoderen of neemt het de <code>final_lat</code> en <code>final_lon</code> van de moeder-afdeling over.
                         </li>
                     </ul>
 
-                    <p><strong>SIT-locaties (<code>SitLocation</code>):</strong></p>
+                    <p><b>SIT-locaties (<code>SitLocation</code>):</b></p>
                     <ul class="steps-list">
                         <li>Als het adres leeg is, toont de pop-up <code>"Geen adres"</code>. Indien noch coördinaten noch een adres gekend zijn, wordt de SIT-locatie veilig overgeslagen.</li>
                     </ul>
@@ -1698,15 +1685,15 @@ if mask.any():
                     </h4>
                     <ul class="steps-list">
                         <li>
-                            <strong>Standaard Rode Kruis Conventie:</strong> Als <code>dept.website_override</code> leeggelaten wordt, genereert het systeem automatisch de officiële website-URL op basis van de afdelingsnaam:
+                            <b>Standaard Rode Kruis Conventie:</b> Als <code>dept.website_override</code> leeggelaten wordt, genereert het systeem automatisch de officiële website-URL op basis van de afdelingsnaam:
                             <div class="code-block">website_url = f"https://www.rodekruis.be/afdeling/{dept.name.lower().replace(' ', '-')}"</div>
                         </li>
                         <li>
-                            <strong>Vrijwilligersknop:</strong> De knop <em>"Word vrijwilliger"</em> in de pop-up verwijst automatisch door naar:
+                            <b>Vrijwilligersknop:</b> De knop <em>"Word vrijwilliger"</em> in de pop-up verwijst automatisch door naar:
                             <div class="code-block">{website_url}/wat-kan-jij-doen/word-vrijwilliger/</div>
                         </li>
                         <li>
-                            <strong>Uitzondering voor Provinciale Zetels:</strong> Bij entiteiten van het type <code>provinciale_zetel</code> worden de website-link en de <em>"Word vrijwilliger"</em>-knop <strong>bewust weggelaten</strong> uit de pop-up.
+                            <b>Uitzondering voor Provinciale Zetels:</b> Bij entiteiten van het type <code>provinciale_zetel</code> worden de website-link en de <em>"Word vrijwilliger"</em>-knop <b>bewust weggelaten</b> uit de pop-up.
                         </li>
                     </ul>
                 </div>
@@ -1720,7 +1707,7 @@ if mask.any():
                     <ul class="steps-list">
                         <li>Indien leeg (<code>None</code>), valt het veld terug op een lege string <code>""</code>.</li>
                         <li>In de standaard afdelingspop-up blijft de e-maillink leeg of wordt deze niet storend getoond.</li>
-                        <li>Bij <strong>112-standplaatsen</strong> verschijnt bij afwezigheid van een e-mailadres expliciet de tekst: <code>"Geen e-mailadres gekend"</code>.</li>
+                        <li>Bij <b>112-standplaatsen</b> verschijnt bij afwezigheid van een e-mailadres expliciet de tekst: <code>"Geen e-mailadres gekend"</code>.</li>
                     </ul>
                 </div>
 
@@ -1732,7 +1719,7 @@ if mask.any():
                     </h4>
                     <ul class="steps-list">
                         <li>Dit veld is optioneel in de databank (<code>nullable=True</code>).</li>
-                        <li>Het wordt bewaard voor administratieve doeleinden en gebruikersoverzichten in het beheerpaneel, maar wordt in de compacte publieke en interne kaartpop-ups <strong>niet getoond</strong> om de pop-up overzichtelijk en rustig te houden.</li>
+                        <li>Het wordt bewaard voor administratieve doeleinden en gebruikersoverzichten in het beheerpaneel, maar wordt in de compacte publieke en interne kaartpop-ups <b>niet getoond</b> om de pop-up overzichtelijk en rustig te houden.</li>
                     </ul>
                 </div>
 
